@@ -12576,7 +12576,9 @@ function slots75(){ const host = $('#actions'); if (!host || slotEls.length >= N
 function v75Migrate(){ if (PROG.v75) return; PROG.v75 = { legacy:[...TREE.alloc].filter(id => id !== 'start') }; saveProgress(); }
 { const _spT = saveProgress; saveProgress = function(){ const r = _spT.apply(this, arguments); try { const d = JSON.parse(STORE.get(SAVE_KEY) || 'null'); if (d && PROG.v75){ d.v75 = PROG.v75; STORE.set(SAVE_KEY, JSON.stringify(d)); } } catch(e){} return r; }; }
 { const _lpT = loadProgress; loadProgress = function(){ const r = _lpT.apply(this, arguments); try { const d = JSON.parse(STORE.get(SAVE_KEY) || 'null'); PROG.v75 = d && d.v75 ? d.v75 : null; if (d && (d.alloc || []).length) v75Migrate(); padLoadout(); syncPoints(); } catch(e){} return r; }; }
-try { const d = JSON.parse(STORE.get(SAVE_KEY) || 'null'); if (d){ PROG.v75 = d.v75 || null; if (!PROG.v75 && (d.alloc || []).length) v75Migrate(); } } catch(e){}
+/* v106: never save while the game is still starting — the hero is not loaded yet, so a save here wrote a blank level-1 hero over the real one.
+   The migration runs from the loadProgress wrapper above, after the save is loaded. */
+try { const d = JSON.parse(STORE.get(SAVE_KEY) || 'null'); if (d){ PROG.v75 = d.v75 || null; } } catch(e){}
 setTimeout(() => { try { slots75(); syncPoints(); } catch(e){ console.error(e); } }, 50);
 window.V75T = { ringLv, nodeCost, spentPoints, padLoadout };
 { const _rtT = resetTree; resetTree = function(){ const n0 = TREE.alloc.size; const r = _rtT.apply(this, arguments); if (TREE.alloc.size < n0){ PROG.v75 = { legacy:[] }; syncPoints(); saveProgress(); refreshTree(); } return r; }; }
@@ -15528,6 +15530,35 @@ body.ls #gearScreen[data-tab="gear"] .bag #bagGrid.bagGrid:not([hidden]){ grid-t
 @media (max-height:380px){ body.ls .side105 > .dslot .cell{ width:42px !important; height:42px !important; } body.ls #gearScreen[data-tab="gear"] .side105{ grid-template-columns:repeat(2, 46px); gap:3px 5px; } body.ls .side105 > .dslot{ width:46px !important; }
   #strip105 b{ font-size:17px; } body.ls #gearScreen[data-tab="gear"] .doll{ padding:6px 8px 4px !important; } }
 `; document.head.appendChild(css); }
+
+/* =================== v106 · SAVES ARE SAFE (owner, 2026-10-24: "make sure the game is saving progress") ===================
+   Found: at start-up, before the save was loaded, a one-time tree migration called saveProgress() — writing the blank
+   starting hero (level 1, empty bag) over the real save. Heroes made after that migration never got its marker, so it
+   fired on every start: every new hero was wiped on the first restart (the Claude version too, and its cloud copy).
+   Fixed at the source (v75_tree.js) and guarded here:
+   · nothing is saved until the save on this device / account has been loaded (or there is no save yet)
+   · the game also saves when it goes to the background or closes, and every 20 s while playing
+   · a backup copy of the last good hero is kept; if a save ever comes back blank while the backup is a stronger hero,
+     the backup is restored */
+const SV106 = { loaded:false, BK:'shardbound.hero.bak106' };
+{ const _lp106 = loadProgress; loadProgress = function(){ const r = _lp106.apply(this, arguments); SV106.loaded = true; return r; }; }
+{ const _ng106 = newGame; newGame = function(){ SV106.loaded = true; return _ng106.apply(this, arguments); }; }
+function heroScore106(d){ try { if (!d) return -1; return (d.lvl | 0)*1000 + ((d.inv || []).length) + Object.values(d.eq || {}).filter(Boolean).length*10 + ((d.alloc || []).length); } catch(e){ return -1; } }
+{ const _sp106 = saveProgress; saveProgress = function(){
+    if (!SV106.loaded && STORE.get(SAVE_KEY)) return; /* the real save is not loaded yet: never overwrite it */
+    const r = _sp106.apply(this, arguments);
+    try { const cur = JSON.parse(STORE.get(SAVE_KEY) || 'null'), bak = JSON.parse(localStorage.getItem(SV106.BK) || 'null');
+      if (cur && heroScore106(cur) >= heroScore106(bak) - 2000) localStorage.setItem(SV106.BK, JSON.stringify(cur)); } catch(e){}
+    return r; }; }
+/* restore: if the hero on disk looks blank but the backup is a real hero, put the backup back before loading */
+(function(){ try { const cur = JSON.parse(STORE.get(SAVE_KEY) || 'null'), bak = JSON.parse(localStorage.getItem(SV106.BK) || 'null');
+  if (bak && heroScore106(bak) > heroScore106(cur) + 2000 && (!cur || (cur.lvl | 0) <= 1)){ STORE.set(SAVE_KEY, JSON.stringify(bak)); SV106.restored = true; } } catch(e){} })();
+/* save when the game leaves the screen, and regularly while playing */
+const save106 = () => { try { if (SV106.loaded && (S.mode === 'play' || S.mode === 'draft' || !document.getElementById('gearScreen').hidden)) saveProgress(); STORE.flush(); } catch(e){} };
+document.addEventListener('visibilitychange', () => { if (document.hidden) save106(); });
+addEventListener('pagehide', save106);
+setInterval(() => { try { if (SV106.loaded && S.mode === 'play' && !P.dead) saveProgress(); } catch(e){} }, 20000);
+window.SV106 = SV106;
 
 })();
 
