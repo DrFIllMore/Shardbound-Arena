@@ -15351,6 +15351,114 @@ body.ls #treeScreen .treeZoom{ top:64px !important; }
 body.ls #charScreen .csBody{ background:transparent !important; }
 `; document.head.appendChild(css); }
 
+/* =================== v104 · HERO + TREE POLISH (owner, 2026-10-24) ===================
+   "Stats not aligned · equipped vs inventory can't be told apart · zoom/fit smashed · can't tell how many points ·
+    buttons overlap sections · some bigger, some smaller."
+   Hero:  every stat row the full column width, numbers right-aligned in fixed-width digits.
+          EQUIPPED is its own bronze plate (gold-framed slots, a caption in the free squares);
+          BAG has its own header row (name · count · Show · Sort) and plain steel slots.
+   Tree:  one header bar flush to the top (no overlap with the map): title + build on the left,
+          a large points counter in the middle, three buttons of one size on the right;
+          zoom / fit / help as one tidy column of equal round-cornered buttons at the map's bottom-left. */
+/* ---------------- hero: equipped plate + bag header ---------------- */
+{ const _w104 = worn101; worn101 = function(){ const r = _w104.apply(this, arguments); try {
+      const w = document.getElementById('worn101'), bag = w && w.parentElement, grid = document.getElementById('bagGrid'); if (!w || !grid) return r;
+      let cap = document.getElementById('wornCap104'); if (!cap){ cap = document.createElement('div'); cap.id = 'wornCap104'; cap.innerHTML = '<b>Equipped</b><span>Tap a piece to see what fits it</span>'; }
+      if (cap.parentElement !== w || w.lastElementChild !== cap) w.appendChild(cap);
+      let head = document.getElementById('bagHead104'); if (!head){ head = document.createElement('div'); head.id = 'bagHead104'; head.innerHTML = '<b>Bag</b><span class="n104"></span>'; }
+      if (head.nextElementSibling !== grid) grid.before(head);
+      const f = document.getElementById('filt86'); if (f && f.parentElement !== head) head.appendChild(f);
+      head.querySelector('.n104').textContent = P.inv.length + ' / ' + INV_MAX;
+      const sub = cap.querySelector('span'); const n = EQ_SLOTS.filter(s => P.eq[s]).length; sub.textContent = slotFilter77 ? 'Showing bag items for ' + (NAME101[slotFilter77] || 'this slot') : n + ' of ' + EQ_SLOTS.length + ' worn · tap one to see what fits';
+      head.hidden = invTab !== 'gear';
+    } catch(e){ console.error(e); } return r; }; }
+/* ---------------- tree: points counter ---------------- */
+function pts104(){ const top = document.querySelector('#treeScreen .treeTop'); if (!top) return; let el = document.getElementById('pts104');
+  if (!el){ el = document.createElement('div'); el.id = 'pts104'; el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l5 7-5 13-5-13z" fill="currentColor"/><path d="M7 9h10" stroke="#04121b" stroke-width="1.2" opacity=".5"/></svg><b></b><span><i>Points</i><em>to spend</em></span>'; const btns = top.querySelector('.treeBtns'); top.insertBefore(el, btns); }
+  const sub = top.querySelector('.treeSub'); if (sub){ let s2 = document.getElementById('sub104'); if (!s2){ s2 = document.createElement('div'); s2.id = 'sub104'; sub.after(s2); } const lv = (document.getElementById('treeLvl') || {}).textContent || '', bn = (document.getElementById('buildNow') || {}).textContent || ''; s2.innerHTML = ''; s2.append(lv); if (bn){ s2.append(' · '); const b = document.createElement('b'); b.textContent = bn; s2.append(b); } }
+  const n = Math.max(0, P.points | 0); el.querySelector('b').textContent = n; el.classList.toggle('has', n > 0); el.querySelector('i').textContent = n === 1 ? 'Point' : 'Points'; el.querySelector('em').textContent = n > 0 ? 'to spend' : 'all spent'; }
+{ const _rt104 = refreshTree; refreshTree = function(){ const r = _rt104.apply(this, arguments); try { pts104(); } catch(e){} return r; }; }
+/* the Fit and help buttons get icons, like + and − */
+function zoom104(){ const fit = document.getElementById('treeFit'), hlp = document.getElementById('treeLegendBtn');
+  if (fit && !fit.dataset.i104){ fit.dataset.i104 = 1; fit.setAttribute('aria-label', 'Fit the tree'); fit.title = 'Fit'; fit.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'; }
+  if (hlp && !hlp.dataset.i104){ hlp.dataset.i104 = 1; hlp.setAttribute('aria-label', 'Legend'); } }
+{ const el = document.getElementById('treeScreen'); if (el) new MutationObserver(() => { if (!el.hidden){ try { zoom104(); pts104(); } catch(e){} } }).observe(el, { attributes:true, attributeFilter:['hidden'] }); }
+window.pts104 = pts104;
+{ const css = document.createElement('style'); css.id = 'v104css'; css.textContent = `
+/* ================= HERO ================= */
+/* stats: every row spans the column; digits line up */
+body.ls #gearScreen #invSide .heroStats > div{ width:100% !important; max-width:none !important; margin:0 !important; box-sizing:border-box !important; grid-column:auto !important; }
+body.ls #gearScreen #invSide .heroStats > div b{ font-variant-numeric:tabular-nums; text-align:right !important; margin-left:auto !important; }
+/* the right pane: equipped plate, then the bag */
+body.ls #gearScreen[data-tab="gear"] #worn101:not([hidden]){ background:linear-gradient(180deg, rgba(216,180,90,.12), rgba(216,180,90,.04)) !important; border:1px solid rgba(216,180,90,.42) !important; border-radius:9px !important;
+  padding:6px !important; gap:5px !important; box-shadow:inset 0 1px 0 rgba(243,220,154,.18) !important; margin-bottom:2px !important; }
+body.ls #worn101 .dslot.filled .cell{ box-shadow:inset 0 0 0 1.5px rgba(232,196,110,.85), inset 0 -10px 16px -8px var(--r, transparent), inset 0 0 12px rgba(0,0,0,.7) !important; }
+body.ls #worn101 .dslot:not(.filled) .cell{ box-shadow:inset 0 0 0 1px rgba(216,180,90,.32), inset 0 0 12px rgba(0,0,0,.8) !important; }
+#wornCap104{ display:none; }
+body.ls #worn101 > #wornCap104{ display:flex; flex-direction:column; justify-content:center; grid-row:2; grid-column:3 / -1; padding:0 4px 0 10px; min-width:0; border-left:1px solid rgba(216,180,90,.25); }
+#wornCap104 b{ font:900 13px/1.1 'Cinzel', Georgia, serif; letter-spacing:.14em; text-transform:uppercase; color:#f3dc9a; text-shadow:0 1px 4px #000; }
+#wornCap104 span{ font:500 10.5px/1.3 'Chakra Petch', sans-serif; color:#a9b8c6; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bagHead104{ display:none; }
+body.ls #gearScreen[data-tab="gear"] #bagHead104:not([hidden]){ display:flex !important; align-items:center; gap:8px; flex:0 0 auto !important; height:34px; padding:0 2px; overflow:visible !important; }
+#bagHead104 > b{ font:900 13px/1 'Cinzel', Georgia, serif; letter-spacing:.14em; text-transform:uppercase; color:#cfd9e3; }
+#bagHead104 > .n104{ font:600 12px/1 'Chakra Petch', sans-serif; color:#8fa3b5; font-variant-numeric:tabular-nums; }
+body.ls #bagHead104 > #filt86{ display:flex !important; margin:0 0 0 auto !important; padding:0 !important; gap:6px !important; height:auto !important; min-height:0 !important; overflow:visible !important; grid-column:auto !important; grid-row:auto !important; flex:0 0 auto !important; }
+body.ls #bagHead104 > #filt86 .fsel99, body.ls #bagHead104 > #filt86 .sort99{ height:32px !important; min-width:0 !important; padding:0 12px !important; font-size:12px !important; border-radius:8px !important; margin:0 !important; flex:0 0 auto !important; }
+body.ls #bagHead104 > #filt86 .fsel99{ max-width:190px; }
+/* nine across for both grids: smaller squares, two full bag rows on a phone */
+body.ls #gearScreen[data-tab="gear"] #worn101:not([hidden]), body.ls #gearScreen[data-tab="gear"] .bag #bagGrid.bagGrid:not([hidden]){ grid-template-columns:repeat(9, minmax(0, 1fr)) !important; }
+/* short screens: tighter spacing so the bag shows two full rows */
+@media (max-height:380px){ body.ls #gearScreen[data-tab="gear"] .bag{ padding:6px !important; gap:4px !important; } body.ls #gearScreen[data-tab="gear"] #worn101:not([hidden]){ padding:4px !important; gap:4px !important; }
+  body.ls #gearScreen[data-tab="gear"] #bagHead104:not([hidden]){ height:28px; } body.ls #bagHead104 > #filt86 .fsel99, body.ls #bagHead104 > #filt86 .sort99{ height:28px !important; }
+  body.ls #gearScreen[data-tab="gear"] .bag #bagGrid.bagGrid:not([hidden]){ gap:4px !important; } } @media (max-height:460px){ body.ls #gearScreen #invSide .sideSets{ display:none !important; } }
+/* bag slots: plain steel, so worn gear (gold) never looks like bag gear */
+body.ls #gearScreen #bagGrid .bslot .cell{ box-shadow:inset 0 0 0 1px rgba(140,165,190,.28), inset 0 -10px 16px -10px var(--r, transparent), inset 0 0 12px rgba(0,0,0,.75) !important; }
+body.ls #gearScreen #bagGrid .bslot .cell.empty{ box-shadow:inset 0 0 0 1px rgba(140,165,190,.12), inset 0 0 10px rgba(0,0,0,.8) !important; }
+/* ================= TREE ================= */
+/* one header bar, flush to the top, nothing underneath it */
+body.ls #treeScreen .treeTop.treeTop{ position:absolute !important; left:0 !important; right:0 !important; top:0 !important; height:52px !important; margin:0 !important; box-sizing:border-box !important;
+  padding:0 12px 0 calc(14px + var(--saL, var(--saL,env(safe-area-inset-left, 0px)))) !important; display:flex !important; align-items:center !important; gap:14px !important; z-index:4 !important;
+  background:linear-gradient(180deg, rgba(6,11,19,.96), rgba(6,11,19,.88)) !important; border:0 !important; border-bottom:1px solid rgba(216,180,90,.38) !important; border-radius:0 !important; }
+body.ls #treeScreen .treeTop > div:first-child{ flex:0 1 auto; min-width:0; }
+body.ls #treeScreen .treeTop h2{ font-size:19px !important; line-height:1.05 !important; margin:0 !important; white-space:nowrap; }
+body.ls #treeScreen .treeTop .treeSub{ font:600 11.5px/1.3 'Chakra Petch', sans-serif !important; color:#9fb0c0 !important; white-space:nowrap; margin-top:2px !important; }
+body.ls #treeScreen .treeTop .treeSub{ display:none !important; }
+#sub104{ font:600 11.5px/1.3 'Chakra Petch', sans-serif; color:#9fb0c0; white-space:nowrap; margin-top:3px; } #sub104 b{ color:#ffd66b; font-weight:600; }
+body.ls #treeScreen #leanBars{ display:none !important; }
+/* points counter */
+#pts104{ display:flex; align-items:center; gap:8px; height:38px; padding:0 14px 0 10px; border-radius:10px; margin:0 auto; flex:0 0 auto;
+  background:linear-gradient(180deg, rgba(20,30,42,.9), rgba(8,13,22,.92)); border:1px solid rgba(140,165,190,.3); color:#6f8296; }
+#pts104 svg{ width:20px; height:20px; flex:0 0 auto; }
+#pts104 b{ font:600 30px/1 'Teko', sans-serif; letter-spacing:.02em; color:#8fa3b5; font-variant-numeric:tabular-nums; margin-top:3px; }
+#pts104 span{ display:flex; flex-direction:column; line-height:1.05; }
+#pts104 i{ font:700 11px 'Chakra Petch', sans-serif; font-style:normal; letter-spacing:.14em; text-transform:uppercase; color:#a9b8c6; }
+#pts104 em{ font:500 10px 'Chakra Petch', sans-serif; font-style:normal; letter-spacing:.06em; color:#7d8ea0; }
+#pts104.has{ color:#ffd66b; border-color:rgba(255,214,107,.75); background:linear-gradient(180deg, rgba(70,52,16,.92), rgba(30,22,8,.94)); box-shadow:0 0 0 1px rgba(255,214,107,.15), 0 0 18px rgba(255,190,80,.35); animation:pts104 1.8s ease-in-out infinite; }
+#pts104.has b{ color:#fff3cf; text-shadow:0 0 10px rgba(255,200,90,.8); }
+#pts104.has i{ color:#ffe3a0; } #pts104.has em{ color:#d8b45a; }
+@keyframes pts104{ 0%,100%{ box-shadow:0 0 0 1px rgba(255,214,107,.15), 0 0 12px rgba(255,190,80,.25); } 50%{ box-shadow:0 0 0 1px rgba(255,214,107,.35), 0 0 22px rgba(255,190,80,.55); } }
+/* three buttons, one size */
+body.ls #treeScreen .treeTop .treeBtns{ display:flex !important; gap:8px !important; flex:0 0 auto !important; margin:0 !important; position:static !important; }
+body.ls #treeScreen .treeTop .treeBtns > button{ height:36px !important; min-height:36px !important; max-height:36px !important; width:122px !important; min-width:122px !important; max-width:122px !important; padding:0 8px !important; white-space:nowrap !important; margin:0 !important; border-radius:9px !important; font:600 12px/1 'Chakra Petch', sans-serif !important;
+  letter-spacing:.04em !important; text-transform:uppercase; box-sizing:border-box !important; }
+body.ls #treeScreen .treeTop .treeBtns > button[hidden]{ display:none !important; }
+body.ls #treeScreen .treeTop .treeBtns > #treeClose{ font:600 21px/1 'Teko', sans-serif !important; letter-spacing:.08em !important; padding-top:3px !important; }
+/* the map and the side panel start exactly under the bar */
+body.ls #treeSvg{ top:52px !important; height:calc(100% - 52px) !important; }
+body.ls #treeInfo, body.ls #treeInfo[hidden]{ top:52px !important; }
+/* zoom, fit, legend: one column of equal buttons at the map's bottom-left */
+body.ls #treeScreen .treeZoom.treeZoom{ position:absolute !important; top:auto !important; bottom:12px !important; left:calc(12px + var(--saL, var(--saL,env(safe-area-inset-left, 0px)))) !important; right:auto !important;
+  display:flex !important; flex-direction:column !important; gap:0 !important; width:40px !important; height:auto !important; padding:0 !important; z-index:3 !important;
+  background:rgba(6,11,19,.88) !important; border:1px solid rgba(216,180,90,.4) !important; border-radius:11px !important; overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+body.ls #treeScreen .treeZoom.treeZoom > button{ width:40px !important; height:38px !important; min-width:0 !important; padding:0 !important; margin:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important;
+  display:grid !important; place-items:center !important; font:600 18px/1 'Chakra Petch', sans-serif !important; color:#e6eef6 !important; box-shadow:none !important; }
+body.ls #treeScreen .treeZoom.treeZoom > button + button{ border-top:1px solid rgba(216,180,90,.22) !important; }
+body.ls #treeScreen .treeZoom.treeZoom > button:active{ background:rgba(79,216,255,.18) !important; }
+body.ls #treeScreen .treeZoom #treeLegendBtn{ font-size:15px !important; color:#d8b45a !important; }
+body.ls #treeLegend:not([hidden]){ top:62px !important; left:calc(62px + var(--saL, var(--saL,env(safe-area-inset-left, 0px)))) !important; }
+@media (max-height:340px){ body.ls #treeScreen .treeZoom.treeZoom > button{ height:34px !important; } }
+`; document.head.appendChild(css); }
+
 })();
 
 /* ================= ULTIMATES: each role's special move is the capstone of its own tree ================= */
