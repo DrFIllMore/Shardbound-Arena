@@ -15459,6 +15459,76 @@ body.ls #treeLegend:not([hidden]){ top:62px !important; left:calc(62px + var(--s
 @media (max-height:340px){ body.ls #treeScreen .treeZoom.treeZoom > button{ height:34px !important; } }
 `; document.head.appendChild(css); }
 
+/* =================== v105 · EQUIPMENT TAB: GEAR WORN ON THE BODY, BAG BESIDE IT; STATS GET THEIR OWN TAB (owner's pick, 2026-10-24) ===================
+   The v101–v104 "worn grid" put equipped gear in a row of squares that looked like more bag — no way to tell what is worn where.
+   Now (the Diablo paper doll):
+     Equipment tab — left: the hero, with each worn slot placed by body part (helm, cape, chest, arms, legs, feet on the left;
+                     weapon, off-hand, amulet, ring, arrows on the right), every slot named under it; four key stats under the hero.
+                     right: the bag (name · count · Show · Sort), four rows visible.
+     Stats tab     — the full stat sheet, full width.
+   Tapping a worn slot still shows the bag items that fit it; tapping it again opens its details. */
+const DOLL105 = { L:[['head', 'back'], ['body', 'arms'], ['legs', 'feet']], R:[['main', 'off'], ['acc1', 'acc2'], ['ammo']] };
+const NAME105 = { head:'Helm', back:'Cape', body:'Chest', arms:'Arms', legs:'Legs', feet:'Feet', main:'Weapon', off:'Off-hand', acc1:'Amulet', acc2:'Ring', ammo:'Arrows' };
+function doll105(){ try { const gs = document.getElementById('gearScreen'), doll = gs && gs.querySelector('.doll'); if (!doll) return;
+    const mk = (id, cls) => { let e = document.getElementById(id); if (!e){ e = document.createElement('div'); e.id = id; if (cls) e.className = cls; doll.appendChild(e); } return e; };
+    const L = mk('dollL105', 'side105'), R = mk('dollR105', 'side105'), strip = mk('strip105');
+    const place = (host, rows) => rows.forEach(row => row.forEach(k => { const b = gs.querySelector(`#worn101 .dslot[data-eq="${k}"]`) || gs.querySelector(`.dslot[data-eq="${k}"]`); if (!b) return;
+        gs.querySelectorAll(`.dslot[data-eq="${k}"]`).forEach(x => { if (x !== b) x.remove(); });
+        host.appendChild(b); let n = b.querySelector('.n105'); if (!n){ n = document.createElement('span'); n.className = 'n105'; b.appendChild(n); } n.textContent = NAME105[k]; }));
+    place(L, DOLL105.L); place(R, DOLL105.R);
+    /* the four numbers that matter while changing gear */
+    const val = lab => { const row = Array.from(document.querySelectorAll('#heroStats > div')).find(d => (d.querySelector('small') || {}).textContent === lab); return row ? row.querySelector('b').textContent : '—'; };
+    const html = [['Health', 'Health'], ['Attack', 'Attack'], ['Defense', 'Defense'], ['Crit', 'Crit']].map(([lab, t]) => `<div><small>${t}</small><b>${val(lab)}</b></div>`).join('');
+    if (strip.innerHTML !== html) strip.innerHTML = html;
+    /* the tab says what it is; the bag count lives in the bag's own header */
+    const tg = document.getElementById('tabGear'); if (tg && tg.firstChild && tg.firstChild.nodeType === 3 && tg.firstChild.textContent !== 'Equipment ') tg.firstChild.textContent = 'Equipment ';
+  } catch(e){ console.error(e); } }
+{ const _w105 = worn101; worn101 = function(){ const r = _w105.apply(this, arguments); doll105(); return r; }; }
+window.DOLL105 = DOLL105;
+{ const css = document.createElement('style'); css.id = 'v105css'; css.textContent = `
+/* tabs: Equipment and Stats are both real tabs again */
+body.ls #gearScreen #tabStats.tab{ display:inline-flex !important; }
+body.ls #gearScreen #tabGear #bagN{ display:none !important; }
+/* equipment tab: doll | bag */
+body.ls #gearScreen[data-tab="gear"] .invBody, body.ls #gearScreen[data-tab="gear"] .invBody.wide86{ grid-template-columns:minmax(360px, 47%) minmax(0, 1fr) !important; grid-template-areas:"hero right" !important; }
+body.ls #gearScreen[data-tab="gear"] #invSide{ display:none !important; }
+body.ls #gearScreen #worn101, body.ls #gearScreen #wornCap104, body.ls #gearScreen[data-tab="gear"] #worn101#worn101:not([hidden]), body.ls #worn101 > #wornCap104{ display:none !important; }
+/* six tabs on one line */
+body.ls #gearScreen .invTop .tabs86{ flex-wrap:nowrap !important; white-space:nowrap !important; gap:2px !important; }
+body.ls #gearScreen .invTop .tabs86 .tab{ display:inline-flex !important; align-items:center !important; justify-content:center; height:34px !important; padding:0 10px !important; font-size:11.5px !important; letter-spacing:.06em !important; flex:0 0 auto !important; }
+@media (max-width:900px){ body.ls #gearScreen .invTop h2{ display:none !important; } body.ls #gearScreen .invTop .tabs86 .tab{ padding:0 8px !important; } }
+/* the doll: slots | hero | slots, key stats along the bottom */
+body.ls #gearScreen[data-tab="gear"] .doll{ display:grid !important; grid-template-columns:auto minmax(0, 1fr) auto !important; grid-template-rows:minmax(0, 1fr) auto !important;
+  grid-template-areas:"l hero r" "s s s" !important; column-gap:6px !important; padding:8px 10px 6px !important; }
+body.ls #gearScreen[data-tab="gear"] .doll .dollMid{ grid-area:hero !important; position:relative !important; inset:auto !important; min-height:0 !important; z-index:1; }
+body.ls #gearScreen[data-tab="gear"] .doll::before{ left:28% !important; right:28% !important; bottom:16% !important; }
+.side105{ display:none; }
+body.ls #gearScreen[data-tab="gear"] .side105{ display:grid !important; grid-template-columns:repeat(2, 50px); grid-auto-rows:min-content; align-content:center; gap:4px 6px; z-index:2; position:relative; }
+body.ls #gearScreen[data-tab="gear"] #dollL105{ grid-area:l; } body.ls #gearScreen[data-tab="gear"] #dollR105{ grid-area:r; }
+body.ls #gearScreen[data-tab="gear"] #dollR105 > .dslot[data-eq="ammo"]{ grid-column:1 / -1; justify-self:center; }
+body.ls .side105 > .dslot{ display:flex !important; flex-direction:column !important; align-items:center !important; gap:2px !important; width:50px !important; height:auto !important; padding:0 !important; margin:0 !important; position:relative !important; left:auto !important; top:auto !important; transform:none !important; background:none !important; border:0 !important; }
+body.ls .side105 > .dslot .cell{ width:46px !important; height:46px !important; flex:0 0 auto; position:relative; }
+body.ls .side105 > .dslot .n101, body.ls .side105 > .dslot .g2N{ display:none !important; }
+body.ls .side105 > .dslot .n105{ font:700 8px/1 'Cinzel', Georgia, serif; letter-spacing:.06em; text-transform:uppercase; color:#c8ad74; white-space:nowrap; text-shadow:0 1px 2px #000; }
+body.ls .side105 > .dslot:not(.filled) .n105{ color:#7f8a96; }
+body.ls .side105 > .dslot.filled .cell{ box-shadow:inset 0 0 0 1.5px rgba(232,196,110,.85), inset 0 -10px 16px -8px var(--r, transparent), inset 0 0 12px rgba(0,0,0,.7) !important; }
+body.ls .side105 > .dslot:not(.filled) .cell{ box-shadow:inset 0 0 0 1px rgba(216,180,90,.3), inset 0 0 12px rgba(0,0,0,.8) !important; background:radial-gradient(circle at 50% 38%, rgba(30,46,60,.5), rgba(4,8,14,.85)) !important; }
+body.ls .side105 > .dslot:not(.filled) .cell svg{ opacity:.45; color:#f3dc9a; }
+body.ls .side105 > .dslot.pick101 .cell, body.ls .side105 > .dslot.pick77 .cell{ box-shadow:0 0 0 2px #9FE8FF, 0 0 12px rgba(159,232,255,.6) !important; }
+body.ls .side105 > .dslot.locked .n105{ font-size:0; } body.ls .side105 > .dslot.locked .n105::after{ content:'Needs bow'; font-size:7.5px; color:#c98a4a; }
+/* key stats strip */
+#strip105{ display:none; }
+body.ls #gearScreen[data-tab="gear"] #strip105{ grid-area:s; display:grid !important; grid-template-columns:repeat(4, 1fr); gap:0; margin-top:6px; padding-top:5px; border-top:1px solid rgba(216,180,90,.25); z-index:2; position:relative; }
+#strip105 > div{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+#strip105 > div + div{ border-left:1px solid rgba(216,180,90,.16); }
+#strip105 small{ font:700 8.5px/1 'Cinzel', Georgia, serif; letter-spacing:.1em; text-transform:uppercase; color:#c8ad74; }
+#strip105 b{ font:600 19px/1 'Teko', sans-serif; color:#f4fbff; font-variant-numeric:tabular-nums; margin-top:2px; }
+/* bag: seven across, fills its side */
+body.ls #gearScreen[data-tab="gear"] .bag #bagGrid.bagGrid:not([hidden]){ grid-template-columns:repeat(7, minmax(0, 1fr)) !important; }
+@media (max-height:380px){ body.ls .side105 > .dslot .cell{ width:42px !important; height:42px !important; } body.ls #gearScreen[data-tab="gear"] .side105{ grid-template-columns:repeat(2, 46px); gap:3px 5px; } body.ls .side105 > .dslot{ width:46px !important; }
+  #strip105 b{ font-size:17px; } body.ls #gearScreen[data-tab="gear"] .doll{ padding:6px 8px 4px !important; } }
+`; document.head.appendChild(css); }
+
 })();
 
 /* ================= ULTIMATES: each role's special move is the capstone of its own tree ================= */
