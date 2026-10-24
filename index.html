@@ -15089,6 +15089,68 @@ body.ls #gearScreen:not([data-tab="gear"]) .invBody, body.ls #gearScreen:not([da
 body.ls #gearScreen:not([data-tab="gear"]) .doll, body.ls #gearScreen:not([data-tab="gear"]) #invSide{ display:none !important; }
 `; document.head.appendChild(css); }
 
+/* =================== v102 · A MAP IN EVERY AREA (owner, 2026-10-24: "All areas should have a map") ===================
+   The round bronze minimap (v95) only drew in Acts II and III. Act I stages, zones and Shard Rifts now get the same map:
+   the walkable floor traced from the area's own shape, lava / water around it, rocks and pools, open gates and portals,
+   enemies, and the hero arrow. Same frame, same scale, same "up = where the camera looks". */
+const MP102 = { key:null, img:null, L:0, step:.5 };
+function floor102(){ /* the area's floor, traced once per area into a small picture */
+  const key = (MAP && (MAP.name || '')) + '|' + S.stage + '|' + ZONE.idx + '|' + (ZONE.id || '') + '|' + (S.rift ? 'r' : '');
+  if (MP102.key === key && MP102.img) return MP102;
+  let L = 30; try { if (!MAP.inside) for (let i=0;i<64;i++) L = Math.max(L, mapR(i/64*TAU) + 4); else L = 80; } catch(e){ L = 60; } L = Math.min(90, Math.ceil(L));
+  const st = L > 60 ? .6 : .5, N = Math.ceil(2*L/st), cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'), im = g.createImageData(N, N), m = new Uint8Array(N*N);
+  for (let j=0;j<N;j++) for (let i=0;i<N;i++){ let ok = false; try { ok = inMap(-L + (i + .5)*st, -L + (j + .5)*st, 0); } catch(e){} m[j*N + i] = ok ? 1 : 0; }
+  const T = THEMES[S.theme] || {};
+  const fl = T.void ? [92, 84, 110] : T.sky ? [120, 128, 140] : [112, 92, 72];
+  for (let j=0;j<N;j++) for (let i=0;i<N;i++){ const k = j*N + i; if (!m[k]) continue; const o = k*4;
+    const edge = !m[k - 1] || !m[k + 1] || !m[k - N] || !m[k + N];
+    if (edge){ im.data[o] = 236; im.data[o + 1] = 206; im.data[o + 2] = 150; im.data[o + 3] = 235; }
+    else { const n = ((i*7 + j*13) % 5)*2; im.data[o] = fl[0] + n; im.data[o + 1] = fl[1] + n; im.data[o + 2] = fl[2] + n; im.data[o + 3] = 230; } }
+  g.putImageData(im, 0, 0);
+  MP102.key = key; MP102.img = cv; MP102.L = L; MP102.step = st; return MP102; }
+function map102(){ const cv = document.getElementById('mm94'); if (!cv || SG.on || S.mode !== 'play') return; if (cv.width !== 232) cv.width = cv.height = 232;
+  const g = cv.getContext('2d'), W = cv.width, R = W/2, inner = R - 13, SC = inner/30;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, W);
+  const f = new THREE.Vector3(); camera.getWorldDirection(f); const yaw = Math.atan2(f.x, f.z), c = Math.cos(-yaw), s = Math.sin(-yaw), px = P.pos.x, pz = P.pos.z;
+  const tx = (x, z) => { const dx = x - px, dz = z - pz; return [R - (dx*c - dz*s)*SC, R - (dx*s + dz*c)*SC]; };
+  const T = THEMES[S.theme] || {}, water = !!MAP.water, lavaOn = typeof lava !== 'undefined' && lava.visible && !T.void && !T.sky;
+  g.save(); g.beginPath(); g.arc(R, R, inner, 0, 6.283); g.clip();
+  /* what lies around the floor: lava, water, void or sky */
+  const bg = g.createRadialGradient(R, R, 4, R, R, inner);
+  if (water){ bg.addColorStop(0, '#24465a'); bg.addColorStop(1, '#0d1c26'); } else if (lavaOn){ bg.addColorStop(0, '#7a2a0e'); bg.addColorStop(.7, '#4a1606'); bg.addColorStop(1, '#260a03'); }
+  else if (T.void){ bg.addColorStop(0, '#2a2140'); bg.addColorStop(1, '#0c0916'); } else { bg.addColorStop(0, '#3a4250'); bg.addColorStop(1, '#141820'); }
+  g.fillStyle = bg; g.fillRect(0, 0, W, W);
+  if (lavaOn){ const t = performance.now()/1000; g.globalAlpha = .35; for (let i=0;i<7;i++){ const a = i*.9 + t*.05, rr = inner*(.35 + (i % 3)*.2); g.fillStyle = i % 2 ? '#ff7a2a' : '#ffb04a'; g.beginPath(); g.arc(R + Math.cos(a)*rr, R + Math.sin(a)*rr, 6 + (i % 3)*3, 0, 6.283); g.fill(); } g.globalAlpha = 1; }
+  /* the floor */
+  try { const F = floor102(); g.save(); g.setTransform(-SC*c, -SC*s, SC*s, -SC*c, R + SC*(c*px - s*pz), R + SC*(s*px + c*pz)); g.imageSmoothingEnabled = true; g.drawImage(F.img, -F.L, -F.L, 2*F.L, 2*F.L); g.restore(); } catch(e){}
+  /* rocks, pillars and pools */
+  try { (ZONE.col || []).forEach(o => { if (!o || o.r > 9) return; const [x, y] = tx(o.x, o.z); if (Math.hypot(x - R, y - R) > inner + 10) return; const r = Math.max(2.2, o.r*SC);
+      g.fillStyle = o.pool ? (water ? 'rgba(90,150,180,.9)' : 'rgba(255,120,40,.9)') : 'rgba(30,24,20,.92)'; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill();
+      if (!o.pool){ g.strokeStyle = 'rgba(200,170,120,.35)'; g.lineWidth = 1; g.stroke(); } }); } catch(e){}
+  /* open gates and portals */
+  const pins = []; try { (openPortals || []).forEach(p => { if (!p || p.dead || p.used) return; const q = p.c || (p.g && p.g.position); if (q) pins.push(q); }); } catch(e){}
+  pins.forEach(q => { const [x, y] = tx(q.x, q.z); if (Math.hypot(x - R, y - R) <= inner - 10){ g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.arc(x, y, 10, 0, 6.283); g.fill(); sig95(g, 'gate', x, y, 10, '#8fdcff'); } });
+  /* enemies: embers */ try { for (const e of enemies){ if (!e || !e.alive || e.type === 'bossPart') continue; if (Math.hypot(e.pos.x - px, e.pos.z - pz) > 40) continue; const [ex, ey] = tx(e.pos.x, e.pos.z); const big = e.type === 'boss' || e.champ, r = big ? 5.4 : e.elite ? 3.6 : 2.4;
+      g.fillStyle = big ? 'rgba(255,90,58,.35)' : 'rgba(224,72,72,.25)'; g.beginPath(); g.arc(ex, ey, r*2, 0, 6.283); g.fill(); g.fillStyle = big ? '#ff7a4a' : e.elite ? '#ffb347' : '#e05048'; g.beginPath(); g.arc(ex, ey, r, 0, 6.283); g.fill(); } } catch(e){}
+  const fog = g.createRadialGradient(R, R, inner*.72, R, R, inner); fog.addColorStop(0, 'rgba(0,0,0,0)'); fog.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = fog; g.fillRect(0, 0, W, W);
+  g.restore();
+  /* portals beyond the edge: a pin on the rim */
+  pins.forEach(q => { let [x, y] = tx(q.x, q.z); const dx = x - R, dy = y - R, d = Math.hypot(dx, dy); if (d > inner - 10){ x = R + dx/d*(inner - 4); y = R + dy/d*(inner - 4); g.fillStyle = '#0b1218'; g.beginPath(); g.arc(x, y, 9, 0, 6.283); g.fill(); sig95(g, 'gate', x, y, 9, '#8fdcff'); } });
+  /* rim: dark iron with a bronze bevel and four studs (as in Acts II and III) */
+  const rim = g.createLinearGradient(0, 0, W, W); rim.addColorStop(0, '#6d5a3a'); rim.addColorStop(.45, '#2a2219'); rim.addColorStop(1, '#5a4a30');
+  g.lineWidth = 9; g.strokeStyle = rim; g.beginPath(); g.arc(R, R, inner + 4.5, 0, 6.283); g.stroke();
+  g.lineWidth = 1.5; g.strokeStyle = 'rgba(232,196,128,.7)'; g.beginPath(); g.arc(R, R, inner + 9, 0, 6.283); g.stroke(); g.strokeStyle = 'rgba(0,0,0,.8)'; g.beginPath(); g.arc(R, R, inner, 0, 6.283); g.stroke();
+  for (let i=0;i<4;i++){ const a = i*Math.PI/2 + Math.PI/4, x = R + Math.cos(a)*(inner + 4.5), y = R + Math.sin(a)*(inner + 4.5); const s2 = g.createRadialGradient(x - 1, y - 1, .5, x, y, 4); s2.addColorStop(0, '#f2d79a'); s2.addColorStop(1, '#5a4626'); g.fillStyle = s2; g.beginPath(); g.arc(x, y, 3.6, 0, 6.283); g.fill(); }
+  /* the hero */ M95.glow = (M95.glow + .08) % 6.283; { const fy = Math.atan2(P.face.x, P.face.z) - yaw; g.save(); g.translate(R, R); g.rotate(-fy + Math.PI);
+    g.shadowColor = 'rgba(140,230,255,.9)'; g.shadowBlur = 8 + Math.sin(M95.glow)*3; g.fillStyle = '#e9fbff'; g.strokeStyle = '#0a2230'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.shadowBlur = 0; g.stroke(); g.restore(); } }
+/* every area: the map frame is shown and drawn in Act I and rifts too */
+mapTick94 = (function(prev){ return function(){ const r = prev.apply(this, arguments); try { const w = document.getElementById('mmWrap94'); if (w){ w.classList.add('sg'); w.classList.toggle('a1map102', !SG.on); } if (!SG.on) map102(); } catch(e){} return r; }; })(mapTick94);
+window.MP102 = MP102; window.map102 = map102;
+{ const css = document.createElement('style'); css.id = 'v102css'; css.textContent = `
+#mmWrap94.a1map102 #mm94{ display:block !important; }
+`; document.head.appendChild(css); }
+
 })();
 
 /* ================= ULTIMATES: each role's special move is the capstone of its own tree ================= */
