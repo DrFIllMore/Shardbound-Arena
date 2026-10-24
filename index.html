@@ -15151,6 +15151,206 @@ window.MP102 = MP102; window.map102 = map102;
 #mmWrap94.a1map102 #mm94{ display:block !important; }
 `; document.head.appendChild(css); }
 
+/* =================== v103 · THE MENUS IN THE TITLE SCREEN'S ART (owner, 2026-10-24) ===================
+   "When compared to the title page, the hero view and skill tree are a big difference in artwork and detail."
+   · behind the hero screen, the tree and the full stats sheet: the area you are in, blurred and darkened (the title scene from the title)
+   · panels: smoked glass with a bronze edge and gold corner marks; Cinzel gold headings, Teko numerals, Chakra Petch labels
+   · the hero stands on a lit platform with drifting shards; item slots are cut-gem frames; Done is the PLAY blade
+   · the passive tree is a night sky: school-coloured nebulae and stars, gem nodes in bronze rings, glowing gold paths
+   · same look on pause, settings, how-to, draft, loot, checkpoint, end, item card and death card
+   · fixes: the Arrows slot no longer prints "BOW" over its name; tree controls stay clear of the camera cutout */
+const ART103 = { snapAt:0 };
+/* ---------------- backdrop: the current area, blurred ---------------- */
+function bdCanvas103(){ let c = document.getElementById('bd103'); if (!c){ c = document.createElement('canvas'); c.id = 'bd103'; c.width = 64; c.height = 28; } return c; }
+function snap103(){ try { const src = renderer.domElement, rS = S.inMenu ? TS : scene, rC = S.inMenu ? TC : camera; if (!rS || !rC) return;
+    renderer.setRenderTarget(null); renderer.render(rS, rC);
+    const w1 = 256, h1 = Math.max(32, Math.round(w1*src.height/Math.max(1, src.width))), a = document.createElement('canvas'); a.width = w1; a.height = h1; const ga = a.getContext('2d'); ga.drawImage(src, 0, 0, w1, h1);
+    const c = bdCanvas103(), w2 = 72, h2 = Math.max(16, Math.round(w2*h1/w1)); c.width = w2; c.height = h2; const g = c.getContext('2d'); g.imageSmoothingEnabled = true;
+    const b = document.createElement('canvas'); b.width = 144; b.height = Math.round(144*h1/w1); b.getContext('2d').drawImage(a, 0, 0, b.width, b.height);
+    g.drawImage(b, 0, 0, w2, h2); g.fillStyle = 'rgba(2,6,12,.42)'; g.fillRect(0, 0, w2, h2); ART103.snapAt = performance.now();
+  } catch(e){} }
+function hang103(host){ if (!host) return; const c = bdCanvas103(); if (c.parentElement !== host) host.insertBefore(c, host.firstChild); let v = host.querySelector(':scope > .vig103'); if (!v){ v = document.createElement('div'); v.className = 'vig103'; c.after(v); } }
+['gearScreen', 'treeScreen'].forEach(id => { const el = document.getElementById(id); if (!el) return; new MutationObserver(() => { if (!el.hidden){ snap103(); hang103(el); } }).observe(el, { attributes:true, attributeFilter:['hidden'] }); });
+{ const _oc103 = openChar; openChar = function(){ const r = _oc103.apply(this, arguments); try { const el = document.getElementById('charScreen'); if (el && !el.hidden){ if (performance.now() - ART103.snapAt > 400) snap103(); hang103(el); } } catch(e){} return r; }; }
+/* ---------------- hero stage: drifting shards ---------------- */
+function stage103(){ const doll = document.querySelector('#gearScreen .doll'); if (!doll || doll.querySelector('.sh103')) return; const w = document.createElement('div'); w.className = 'sh103';
+  w.innerHTML = Array.from({ length:7 }, (_, i) => `<i style="--x:${8 + i*13}%;--d:${5 + (i*1.7) % 4}s;--t:${-(i*1.3)}s;--s:${.6 + (i % 3)*.25}"></i>`).join(''); doll.appendChild(w); }
+{ const _ri103 = renderInv; renderInv = function(){ const r = _ri103.apply(this, arguments); try { stage103(); } catch(e){} return r; }; }
+/* ---------------- passive tree: night sky, gem nodes, glowing paths ---------------- */
+const GEM103 = { S:['#f2feff', '#8fe9ff', '#1aa7d8', '#0a3e5e'], P:['#fffbea', '#ffe08a', '#d49a2a', '#5e3c0e'], N:['#ffffff', '#e4ebf5', '#93a1b8', '#323c50'], V:['#fbf4ff', '#d4b4ff', '#8a5ad8', '#2e1b55'] };
+function defs103(svg){ if (svg.querySelector('#metal103')) return; const NS = 'http://www.w3.org/2000/svg'; let d = svg.querySelector('defs'); if (!d){ d = document.createElementNS(NS, 'defs'); svg.insertBefore(d, svg.firstChild); }
+  let h = '<linearGradient id="metal103" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e2a8"/><stop offset=".35" stop-color="#a8823e"/><stop offset=".6" stop-color="#3e2c12"/><stop offset="1" stop-color="#c9a768"/></linearGradient>'
+    + '<linearGradient id="iron103" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a8796"/><stop offset=".5" stop-color="#26303c"/><stop offset="1" stop-color="#5d6a78"/></linearGradient>'
+    + '<radialGradient id="stone103" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#22303e"/><stop offset=".7" stop-color="#0d151f"/><stop offset="1" stop-color="#05090f"/></radialGradient>';
+  Object.entries(GEM103).forEach(([k, c]) => { h += `<radialGradient id="gem${k}103" cx=".38" cy=".32" r=".78"><stop offset="0" stop-color="${c[0]}"/><stop offset=".3" stop-color="${c[1]}"/><stop offset=".72" stop-color="${c[2]}"/><stop offset="1" stop-color="${c[3]}"/></radialGradient>`
+    + `<radialGradient id="halo${k}103"><stop offset="0" stop-color="${c[1]}" stop-opacity=".55"/><stop offset=".45" stop-color="${c[2]}" stop-opacity=".22"/><stop offset="1" stop-color="${c[2]}" stop-opacity="0"/></radialGradient>`; });
+  h += '<radialGradient id="haloA103"><stop offset="0" stop-color="#ffd66b" stop-opacity=".5"/><stop offset="1" stop-color="#ffd66b" stop-opacity="0"/></radialGradient>'
+    + '<radialGradient id="nebS103"><stop offset="0" stop-color="#2bb8e8" stop-opacity=".30"/><stop offset=".5" stop-color="#145a8a" stop-opacity=".14"/><stop offset="1" stop-color="#0a2a44" stop-opacity="0"/></radialGradient>'
+    + '<radialGradient id="nebP103"><stop offset="0" stop-color="#ffb84a" stop-opacity=".26"/><stop offset=".5" stop-color="#8a5418" stop-opacity=".12"/><stop offset="1" stop-color="#3a2208" stop-opacity="0"/></radialGradient>'
+    + '<radialGradient id="nebV103"><stop offset="0" stop-color="#9a6aff" stop-opacity=".16"/><stop offset="1" stop-color="#2a1a55" stop-opacity="0"/></radialGradient>';
+  d.insertAdjacentHTML('beforeend', h); }
+function gemOf103(n){ if (n.kind === 'skill' || n.kind === 'ult') return 'V'; if (n.region === 0) return 'S'; if (n.region === 1) return 'P'; return 'N'; }
+function sky103(){ try { const NS = 'http://www.w3.org/2000/svg', bg = treeSvg.querySelector('g'); if (!bg || bg.querySelector('.sky103')) return;
+    const W = W77.colW*5 + 70, far = 13.6*W77.rowH, sky = document.createElementNS(NS, 'g'); sky.setAttribute('class', 'sky103');
+    let h = '';
+    /* nebulae: Sorceress blue to the left, Paladin gold to the right, a violet seam at the core */
+    [[-far*.28, -W*.15, far*.34, W*.62, 'S'], [-far*.66, W*.18, far*.30, W*.5, 'S'], [-far*.9, -W*.2, far*.22, W*.45, 'V'],
+     [far*.28, W*.12, far*.34, W*.62, 'P'], [far*.66, -W*.2, far*.30, W*.5, 'P'], [far*.9, W*.15, far*.22, W*.45, 'P'], [0, 0, 160, W*.55, 'V']]
+      .forEach(([x, y, rx, ry, k]) => { h += `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${rx.toFixed(0)}" ry="${ry.toFixed(0)}" fill="url(#neb${k}103)"/>`; });
+    /* stars: fixed seed so the sky is the same every time */
+    let s = 7; const rnd = () => (s = (s*16807) % 2147483647)/2147483647;
+    for (let i=0;i<340;i++){ const x = (rnd()*2 - 1)*far, y = (rnd()*2 - 1)*W*.62, r = rnd() < .08 ? 1.9 : .6 + rnd()*.9, o = .25 + rnd()*.6; h += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(2)}" fill="${rnd() < .2 ? '#cfefff' : '#ffffff'}" opacity="${o.toFixed(2)}"/>`; }
+    sky.innerHTML = h; bg.insertBefore(sky, bg.firstChild);
+  } catch(e){ console.error(e); } }
+function nodes103(){ try { const NS = 'http://www.w3.org/2000/svg'; defs103(treeSvg);
+    Object.entries(nodeEls).forEach(([id, g]) => { if (g.querySelector('.m103')) return; const n = TREE.nodes[id]; if (!n) return; const r = NODE_R[n.kind] || 12, gem = gemOf103(n); g.setAttribute('data-gem', gem);
+      const shape = g.querySelector('.shape'); if (!shape) return;
+      const halo = document.createElementNS(NS, 'circle'); halo.setAttribute('r', (r*2.4).toFixed(1)); halo.setAttribute('class', 'h103'); halo.setAttribute('fill', `url(#halo${gem}103)`); g.insertBefore(halo, g.firstChild);
+      const ah = document.createElementNS(NS, 'circle'); ah.setAttribute('r', (r*2.1).toFixed(1)); ah.setAttribute('class', 'ha103'); ah.setAttribute('fill', 'url(#haloA103)'); g.insertBefore(ah, halo.nextSibling);
+      /* the bronze ring (a rounded plate for skills) */
+      let ring;
+      if (n.kind === 'skill'){ ring = document.createElementNS(NS, 'rect'); ring.setAttribute('x', -r - 4); ring.setAttribute('y', -r - 7); ring.setAttribute('width', (r + 4)*2); ring.setAttribute('height', (r + 7)*2); ring.setAttribute('rx', 6); }
+      else if (n.kind === 'prism' || n.kind === 'key'){ ring = null; }
+      else { ring = document.createElementNS(NS, 'circle'); ring.setAttribute('r', (r + 3.2).toFixed(1)); }
+      if (ring){ ring.setAttribute('class', 'm103'); shape.parentNode.insertBefore(ring, shape); } else { const m = document.createElementNS(NS, 'g'); m.setAttribute('class', 'm103'); g.insertBefore(m, shape); }
+      /* a glint on the cut face */
+      if (n.kind !== 'skill'){ const f = document.createElementNS(NS, 'ellipse'); f.setAttribute('cx', (-r*.32).toFixed(1)); f.setAttribute('cy', (-r*.42).toFixed(1)); f.setAttribute('rx', (r*.36).toFixed(1)); f.setAttribute('ry', (r*.18).toFixed(1)); f.setAttribute('transform', `rotate(-28 ${(-r*.32).toFixed(1)} ${(-r*.42).toFixed(1)})`); f.setAttribute('class', 'f103'); shape.after(f); }
+    });
+    /* paths: a soft gold glow under each lit path */
+    const eg = edgeEls.length && edgeEls[0].el.parentNode; if (eg && !eg.querySelector('.eg103')){ edgeEls.forEach(e => { const l = e.el.cloneNode(); l.setAttribute('class', 'eg103'); eg.insertBefore(l, eg.firstChild); e.g103 = l; }); }
+    glow103();
+  } catch(e){ console.error(e); } }
+function glow103(){ edgeEls.forEach(e => { if (!e.g103) return; const c = e.el.getAttribute('class') || ''; const k = 'eg103' + (/\bon\b/.test(c) ? ' on' : '') + (/hidden/.test(c) ? ' hidden' : '');
+  if (e.g103.getAttribute('class') !== k) e.g103.setAttribute('class', k); ['x1', 'y1', 'x2', 'y2'].forEach(a => { const v = e.el.getAttribute(a); if (e.g103.getAttribute(a) !== v) e.g103.setAttribute(a, v); }); }); }
+{ const _bt103 = buildTreeSvg; buildTreeSvg = function(){ const r = _bt103.apply(this, arguments); try { sky103(); nodes103(); } catch(e){} return r; }; }
+{ const _rt103 = refreshTree; refreshTree = function(){ const r = _rt103.apply(this, arguments); try { if (typeof treeBuilt !== 'undefined' && treeBuilt){ sky103(); nodes103(); glow103(); } } catch(e){} return r; }; }
+window.ART103 = ART103; window.snap103 = snap103;
+{ const css = document.createElement('style'); css.id = 'v103css'; css.textContent = `
+:root{ --g103:#d8b45a; --g103b:#f3dc9a; --c103:#4fd8ff; }
+/* ---------- backdrop ---------- */
+#bd103{ position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; image-rendering:auto; }
+.vig103{ position:absolute; inset:0; z-index:0; pointer-events:none; background:radial-gradient(ellipse 85% 75% at 50% 42%, rgba(8,20,32,0) 0%, rgba(3,6,12,.55) 70%, rgba(2,4,8,.85) 100%); }
+body.ls #gearScreen, body.ls #treeScreen, body.ls #charScreen{ background:#04080e !important; }
+body.ls #gearScreen > .invWrap{ position:relative; z-index:1; background:transparent !important; }
+body.ls #charScreen > .csWrap{ position:relative; z-index:1; }
+body.ls #treeScreen > :not(#bd103):not(.vig103){ z-index:1; } body.ls #treeScreen .treeTop{ position:relative; z-index:4 !important; }
+/* ---------- the panel recipe ---------- */
+body.ls #gearScreen .doll, body.ls #gearScreen .bag, body.ls #gearScreen #invSide, body.ls #charScreen .csWrap, body.ls .screen .sheet, body.ls .screen .sbox, body.ls .pmCard, body.ls #itemDetail, body.ls #death87 .card87, body.ls #death87 > div{
+  background:linear-gradient(180deg, rgba(16,30,42,.78), rgba(6,12,20,.88)) !important; border:1px solid rgba(216,180,90,.34) !important; border-radius:10px !important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55), inset 0 1px 0 rgba(243,220,154,.16), 0 12px 32px rgba(0,0,0,.6) !important; }
+body.ls #gearScreen .doll::after, body.ls #gearScreen .bag::after, body.ls #gearScreen #invSide::after, body.ls #charScreen .csWrap::after, body.ls .screen .sheet::after, body.ls .screen .sbox::after, body.ls .pmCard::after{
+  content:''; position:absolute; inset:5px; pointer-events:none; border-radius:6px; opacity:.85; z-index:3;
+  background:linear-gradient(var(--g103),var(--g103)) left top/11px 1.5px no-repeat, linear-gradient(var(--g103),var(--g103)) left top/1.5px 11px no-repeat,
+   linear-gradient(var(--g103),var(--g103)) right top/11px 1.5px no-repeat, linear-gradient(var(--g103),var(--g103)) right top/1.5px 11px no-repeat,
+   linear-gradient(var(--g103),var(--g103)) left bottom/11px 1.5px no-repeat, linear-gradient(var(--g103),var(--g103)) left bottom/1.5px 11px no-repeat,
+   linear-gradient(var(--g103),var(--g103)) right bottom/11px 1.5px no-repeat, linear-gradient(var(--g103),var(--g103)) right bottom/1.5px 11px no-repeat; }
+body.ls #charScreen .csWrap, body.ls .screen .sheet, body.ls .screen .sbox, body.ls .pmCard, body.ls #gearScreen .bag, body.ls #gearScreen #invSide{ position:relative; }
+/* headings: gold Cinzel */
+body.ls #gearScreen .invTop h2, body.ls #treeScreen .treeTop h2, body.ls #charScreen .csTop h2, body.ls .screen .sheet .actTop h2, body.ls .screen .sheet .actTop h3, body.ls .pmCard h3, body.ls #itemDetail .dtName{
+  font-family:'Cinzel', Georgia, serif !important; font-weight:900 !important; letter-spacing:.05em !important; text-shadow:0 2px 8px rgba(0,0,0,.85), 0 0 16px rgba(216,180,90,.3) !important; }
+body.ls #gearScreen .invTop h2, body.ls #treeScreen .treeTop h2, body.ls #charScreen .csTop h2, body.ls .screen .sheet .actTop h2, body.ls .pmCard h3{ color:var(--g103b) !important; }
+body.ls .screen .sbox h1.dtitle, body.ls .screen .sbox h1.title{ text-shadow:0 2px 10px #000, 0 0 22px rgba(216,180,90,.35) !important; }
+/* tabs: engraved labels, the open one glows */
+body.ls #gearScreen .invTop .tabs86 .tab, body.ls #charScreen .csTabs button{ font-family:'Chakra Petch', sans-serif !important; font-weight:600 !important; letter-spacing:.09em !important; text-transform:uppercase; font-size:12px !important;
+  color:#a6b8c8 !important; background:transparent !important; border:0 !important; border-bottom:2px solid transparent !important; border-radius:0 !important; box-shadow:none !important; }
+body.ls #gearScreen .invTop .tabs86 .tab.on, body.ls #charScreen .csTabs button.on{ color:#eafaff !important; border-bottom-color:var(--c103) !important; text-shadow:0 0 10px rgba(79,216,255,.75); background:linear-gradient(0deg, rgba(79,216,255,.18), transparent 80%) !important; }
+body.ls #gearScreen .invTop .cur > span{ background:rgba(6,12,20,.72) !important; border:1px solid rgba(216,180,90,.36) !important; }
+body.ls #gearClose, body.ls #charScreen .csClose{ background:rgba(6,12,20,.75) !important; border:1px solid rgba(216,180,90,.4) !important; }
+/* ---------- stats column ---------- */
+body.ls #gearScreen #invSide .sideHead{ font-family:'Cinzel', serif !important; font-weight:700 !important; color:var(--g103) !important; letter-spacing:.26em !important; text-align:center; border-bottom:1px solid rgba(216,180,90,.3); padding-bottom:5px !important; margin-bottom:2px !important; }
+body.ls #gearScreen #invSide .heroStats > div{ border-bottom:1px solid rgba(216,180,90,.11) !important; }
+body.ls #gearScreen #invSide .heroStats > div small{ font-family:'Cinzel', serif !important; font-weight:700 !important; color:#c8b07a !important; letter-spacing:.06em !important; font-size:10px !important; }
+body.ls #gearScreen #invSide .heroStats > div b{ font-family:'Teko', sans-serif !important; font-weight:600 !important; font-size:19px !important; line-height:1 !important; color:#f4fbff !important; letter-spacing:.02em; }
+body.ls #gearScreen #invSide .hsMore{ font-family:'Chakra Petch', sans-serif !important; letter-spacing:.05em; background:linear-gradient(180deg, rgba(79,216,255,.2), rgba(79,216,255,.05)) !important; border:1px solid rgba(79,216,255,.5) !important; color:#dff7ff !important; }
+/* ---------- the hero on a lit platform ---------- */
+body.ls #gearScreen .doll{ overflow:hidden !important; background:radial-gradient(ellipse 75% 34% at 50% 93%, rgba(79,216,255,.40), rgba(79,216,255,0) 72%), radial-gradient(ellipse 95% 75% at 50% 30%, rgba(60,125,165,.38), rgba(5,10,18,.86)) !important; }
+body.ls #gearScreen .doll::before{ content:''; position:absolute; left:10%; right:10%; bottom:4.5%; height:15%; border-radius:50%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, rgba(175,242,255,.55), rgba(79,216,255,.16) 46%, transparent 70%); box-shadow:inset 0 0 0 1px rgba(216,180,90,.45), 0 0 18px rgba(79,216,255,.25); }
+body.ls #gearScreen .doll .dollMid{ z-index:1; }
+.sh103{ position:absolute; inset:0; pointer-events:none; z-index:2; overflow:hidden; }
+.sh103 i{ position:absolute; left:var(--x); bottom:-8px; width:5px; height:9px; background:linear-gradient(180deg, #e9fcff, #4fd8ff); clip-path:polygon(50% 0, 100% 50%, 50% 100%, 0 50%); opacity:0; transform:scale(var(--s)); animation:sh103 var(--d) linear infinite; animation-delay:var(--t); filter:drop-shadow(0 0 3px rgba(79,216,255,.9)); }
+@keyframes sh103{ 0%{ transform:translateY(0) scale(var(--s)); opacity:0; } 15%{ opacity:.85; } 80%{ opacity:.5; } 100%{ transform:translateY(-230px) scale(var(--s)); opacity:0; } }
+/* ---------- slots: cut-gem frames ---------- */
+body.ls #worn101 .dslot .cell, body.ls #bagGrid .bslot .cell{ border-radius:7px !important; border:0 !important;
+  background:radial-gradient(circle at 50% 32%, rgba(42,72,94,.6), rgba(5,10,16,.92)) !important; box-shadow:inset 0 0 0 1px rgba(216,180,90,.36), inset 0 0 12px rgba(0,0,0,.8) !important; }
+body.ls #worn101 .dslot .cell[style*="--r"], body.ls #bagGrid .bslot .cell[style*="--r"]{ box-shadow:inset 0 0 0 1px rgba(216,180,90,.36), inset 0 -10px 16px -8px var(--r), inset 0 0 12px rgba(0,0,0,.75) !important; }
+body.ls #bagGrid .bslot .cell.empty{ background:radial-gradient(circle at 50% 40%, rgba(26,42,58,.38), rgba(4,8,14,.78)) !important; box-shadow:inset 0 0 0 1px rgba(216,180,90,.14), inset 0 0 10px rgba(0,0,0,.8) !important; }
+body.ls #worn101 .dslot .cell.empty svg{ opacity:.4; color:var(--g103b); filter:drop-shadow(0 1px 0 rgba(0,0,0,.9)); }
+body.ls #worn101 .dslot .n101{ font-family:'Cinzel', serif !important; font-weight:700 !important; color:#b89c62 !important; font-size:7px !important; }
+body.ls #worn101{ border-bottom-color:rgba(216,180,90,.26) !important; }
+body.ls #filt86 .fsel99, body.ls #filt86 .sort99{ background:rgba(6,12,20,.78) !important; border:1px solid rgba(216,180,90,.36) !important; font-family:'Chakra Petch', sans-serif !important; }
+/* the Arrows slot: one label, no "BOW" printed over it */
+#gearScreen .dslot.locked .cell::after{ content:none !important; display:none !important; }
+body.ls #worn101 .dslot.locked .n101{ font-size:0 !important; } body.ls #worn101 .dslot.locked .n101::after{ content:'NEEDS BOW'; font-size:6.5px; letter-spacing:.06em; color:#d59a5a; }
+/* ---------- buttons: glass like the title's, Done is the PLAY blade ---------- */
+body.ls #gearScreen #g2Bar > button, body.ls #treeScreen .treeTop button:not(.pri):not(#treeClose), body.ls .pmCard .pmBtn:not(.pri), body.ls .screen .sheet .optRow, body.ls #charScreen .csBack{
+  font-family:'Chakra Petch', sans-serif !important; font-weight:600 !important; letter-spacing:.05em; background:linear-gradient(180deg, rgba(22,38,52,.86), rgba(6,12,20,.9)) !important; border:1px solid rgba(150,200,255,.22) !important; border-radius:9px !important; }
+body.ls #gearScreen #g2Bar > button{ text-transform:uppercase; font-size:11.5px !important; }
+body.ls #gearScreen #g2Bar > #g2Done, body.ls #treeScreen #treeClose, body.ls #treeScreen #t2Done, body.ls .pmCard #pmResume, body.ls #howOk{
+  font-family:'Teko', sans-serif !important; font-weight:600 !important; letter-spacing:.06em !important; color:#04121b !important; background:linear-gradient(180deg, #9cecff, #2fbdf0) !important; border:0 !important;
+  clip-path:polygon(7% 0, 100% 0, 93% 100%, 0 100%); box-shadow:none !important; text-shadow:none !important; }
+body.ls #gearScreen #g2Bar > #g2Done{ font-size:22px !important; }
+/* ---------- item card ---------- */
+body.ls #itemDetail .dtName{ font-size:19px !important; }
+body.ls #itemDetail .dSec, body.ls #itemDetail h4{ font-family:'Cinzel', serif !important; color:var(--g103) !important; letter-spacing:.14em !important; }
+/* ---------- passive tree ---------- */
+body.ls #treeScreen .treeTop{ background:linear-gradient(180deg, rgba(3,6,12,.88), rgba(3,6,12,.35) 80%, rgba(3,6,12,0)) !important; border:0 !important; }
+body.ls #treeSvg{ background:transparent !important; }
+body.ls #treeSvg rect[fill^="url(#tPan"]{ fill:rgba(8,14,24,.35) !important; stroke:rgba(216,180,90,.18); stroke-width:1.5; }
+body.ls #treeSvg .tTierLine{ stroke:rgba(216,180,90,.16) !important; stroke-dasharray:3 7 !important; }
+body.ls #treeSvg .t86lv{ font-family:'Cinzel', serif !important; fill:#b89c62 !important; font-weight:700; }
+body.ls #treeSvg .t86school{ font-family:'Cinzel', serif !important; font-weight:900 !important; letter-spacing:.3em; filter:drop-shadow(0 0 6px currentColor); }
+/* paths */
+#treeSvg .tEdge{ stroke:#1d2834 !important; stroke-width:5 !important; stroke-linecap:round; opacity:1 !important; }
+#treeSvg .tEdge.half{ stroke:#6a5530 !important; }
+#treeSvg .tEdge.on{ stroke:#ffdb8e !important; stroke-width:3.6 !important; }
+#treeSvg .tEdge.guide{ stroke:#7fe6ff !important; stroke-dasharray:6 6; }
+#treeSvg .eg103{ stroke:#ffb84a; stroke-width:13; stroke-linecap:round; opacity:0; }
+#treeSvg .eg103.on{ opacity:.22; } #treeSvg .eg103.hidden{ display:none; }
+/* nodes: dark stone in a bronze ring; taken = a lit gem; ready to take = a gold glow */
+#treeSvg .tNode .shape{ fill:url(#stone103) !important; stroke:none !important; }
+#treeSvg .tNode .m103{ fill:none; stroke:url(#iron103); stroke-width:3.2; }
+#treeSvg .tNode.reach .m103{ stroke:url(#metal103); }
+#treeSvg .tNode.avail .m103{ stroke:#ffd66b; stroke-width:3.6; }
+#treeSvg .tNode.alloc .m103{ stroke:url(#metal103); stroke-width:3.4; }
+#treeSvg .tNode.sel .m103{ stroke:#ffffff; stroke-width:4; }
+#treeSvg .tNode .h103, #treeSvg .tNode .ha103, #treeSvg .tNode .f103{ opacity:0; pointer-events:none; }
+#treeSvg .tNode.alloc .h103{ opacity:1; }
+#treeSvg .tNode.avail .ha103{ opacity:1; animation:av103 1.6s ease-in-out infinite; }
+@keyframes av103{ 0%,100%{ opacity:.55; } 50%{ opacity:1; } }
+#treeSvg .tNode.alloc[data-gem="S"] .shape{ fill:url(#gemS103) !important; }
+#treeSvg .tNode.alloc[data-gem="P"] .shape{ fill:url(#gemP103) !important; }
+#treeSvg .tNode.alloc[data-gem="N"] .shape{ fill:url(#gemN103) !important; }
+#treeSvg .tNode.alloc[data-gem="V"] .shape{ fill:url(#gemV103) !important; }
+#treeSvg .tNode.alloc .f103{ opacity:.55; fill:#ffffff; }
+#treeSvg .tNode .tIcon{ stroke:#6c7f93 !important; opacity:1 !important; }
+#treeSvg .tNode .tIcon.fill{ fill:#6c7f93 !important; }
+#treeSvg .tNode.reach .tIcon{ stroke:#c9d7e4 !important; } #treeSvg .tNode.reach .tIcon.fill{ fill:#c9d7e4 !important; }
+#treeSvg .tNode.avail .tIcon{ stroke:#ffe6a6 !important; } #treeSvg .tNode.avail .tIcon.fill{ fill:#ffe6a6 !important; }
+#treeSvg .tNode.alloc .tIcon{ stroke:#06121c !important; } #treeSvg .tNode.alloc .tIcon.fill{ fill:#06121c !important; }
+#treeSvg .tNode .frame{ stroke:url(#metal103) !important; stroke-dasharray:none !important; stroke-opacity:.8 !important; }
+#treeSvg .tNode .notch{ fill:#f3dc9a !important; }
+#treeSvg .tNode .cardFrame{ stroke:#8a6ad0 !important; stroke-dasharray:none !important; opacity:.6; }
+#treeSvg .tNode.alloc .cardFrame{ stroke:#e2d2ff !important; opacity:1; }
+#treeSvg .tNode .prismShape{ fill:url(#stone103) !important; }
+#treeSvg .tNode.alloc .prismShape{ fill:url(#prismGrad) !important; }
+#treeSvg .tNode .kburst{ fill:rgba(255,214,107,.10) !important; stroke:url(#metal103) !important; }
+#treeSvg .tNode.alloc .kburst{ fill:rgba(255,214,107,.35) !important; }
+body.ls #treeInfo{ background:linear-gradient(180deg, rgba(16,30,42,.86), rgba(6,12,20,.94)) !important; border-left:1px solid rgba(216,180,90,.38) !important; }
+body.ls #treeInfo .tiTitle{ font-family:'Cinzel', serif !important; font-weight:900 !important; color:var(--g103b) !important; }
+/* tree controls clear of the camera cutout on the left */
+body.ls #treeScreen .treeZoom{ left:calc(10px + var(--saL, var(--saL,env(safe-area-inset-left, 0px)))) !important; }
+body.ls #treeScreen .treeZoom button{ background:rgba(6,12,20,.78) !important; border:1px solid rgba(216,180,90,.36) !important; }
+body.ls #treeScreen .treeTop{ padding-left:calc(12px + var(--saL, var(--saL,env(safe-area-inset-left, 0px)))) !important; }
+body.ls #treeScreen .treeTop{ height:56px !important; }
+body.ls #treeSvg{ top:56px !important; height:calc(100% - 56px) !important; }
+body.ls #treeInfo, body.ls #treeInfo[hidden]{ top:56px !important; }
+body.ls #treeScreen .treeZoom{ top:64px !important; }
+@media (max-height:380px){ body.ls #gearScreen #invSide .heroStats > div{ padding:1px 0 !important; } body.ls #gearScreen #invSide .heroStats > div b{ font-size:16.5px !important; } body.ls #gearScreen #invSide .heroStats > div small{ font-size:9px !important; } body.ls #gearScreen #invSide .sideHead{ padding-bottom:3px !important; } body.ls #gearScreen #invSide .hsMore{ height:28px !important; margin-top:4px !important; } }
+/* ---------- full stats sheet ---------- */
+body.ls #charScreen .csBody{ background:transparent !important; }
+`; document.head.appendChild(css); }
+
 })();
 
 /* ================= ULTIMATES: each role's special move is the capstone of its own tree ================= */
