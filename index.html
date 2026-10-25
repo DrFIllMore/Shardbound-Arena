@@ -24,26 +24,26 @@
   const desc = k => Object.getOwnPropertyDescriptor(window, k) || Object.getOwnPropertyDescriptor(Window.prototype, k);
   const dW = desc('innerWidth'), dH = desc('innerHeight');
   const rW = () => (dW && dW.get) ? dW.get.call(window) : de.clientWidth;
-  const rH = () => (dH && dH.get) ? dH.get.call(window) : de.clientHeight;
+  const rH = () => { const h = (dH && dH.get) ? dH.get.call(window) : de.clientHeight; try { if ((navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) && screen.height > h && screen.height - h < 120 && rW() <= screen.width + 1) return screen.height; } catch(e){} return h; };
   /* the early screen-fit trims innerHeight by a saved amount meant for a landscape page; it does not apply when turned */
   let fitT = 0; try { const v = localStorage.getItem('sb_fit4'); if (v !== null && !isNaN(+v)) fitT = Math.max(0, Math.min(140, +v)); } catch(e){}
   /* real safe areas (notch / home bar), read once from a probe element */
-  function safe(){ try { const p = document.createElement('div'); p.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)'; (document.body || de).appendChild(p); const cs = getComputedStyle(p); const t = parseFloat(cs.paddingTop) || 0, b = parseFloat(cs.paddingBottom) || 0; p.remove(); return [t, b]; } catch(e){ return [0, 0]; } }
+  function safe(){ if (window.__fakeSafe) return window.__fakeSafe; try { const p = document.createElement('div'); p.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)'; (document.body || de).appendChild(p); const cs = getComputedStyle(p); const t = parseFloat(cs.paddingTop) || 0, b = parseFloat(cs.paddingBottom) || 0; p.remove(); return [t, b]; } catch(e){ return [0, 0]; } }
   try {
     Object.defineProperty(window, 'innerWidth', { configurable:true, get(){ return R.on ? R.VW : rW(); } });
     Object.defineProperty(window, 'innerHeight', { configurable:true, get(){ return R.on ? R.VH + fitT : rH(); } });
   } catch(e){}
   /* real point → game point, and back */
-  const toV = (x, y) => [y - R.T, R.W - x];
-  const toR = (x, y) => [R.W - y, x + R.T];
+  const toV = (x, y) => [y, R.W - x];
+  const toR = (x, y) => [R.W - y, x];
   R.toReal = toR; R.toGame = toV;
   const getter = (proto, k) => { const d = proto && Object.getOwnPropertyDescriptor(proto, k); return d && d.get ? d : null; };
   function patchXY(proto, kx, ky){ const dx = getter(proto, kx), dy = getter(proto, ky); if (!dx || !dy) return;
-    Object.defineProperty(proto, kx, { configurable:true, enumerable:true, get(){ const x = dx.get.call(this); if (!R.on) return x; return dy.get.call(this) - R.T; } });
+    Object.defineProperty(proto, kx, { configurable:true, enumerable:true, get(){ const x = dx.get.call(this); if (!R.on) return x; return dy.get.call(this); } });
     Object.defineProperty(proto, ky, { configurable:true, enumerable:true, get(){ const y = dy.get.call(this); if (!R.on) return y; return R.W - dx.get.call(this); } }); }
   try { patchXY(MouseEvent.prototype, 'clientX', 'clientY'); patchXY(MouseEvent.prototype, 'pageX', 'pageY'); patchXY(MouseEvent.prototype, 'x', 'y'); } catch(e){}
   try { if (window.Touch){ patchXY(Touch.prototype, 'clientX', 'clientY'); patchXY(Touch.prototype, 'pageX', 'pageY'); } } catch(e){}
-  try { const gb = Element.prototype.getBoundingClientRect; Element.prototype.getBoundingClientRect = function(){ const r = gb.call(this); if (!R.on) return r; return new DOMRect(r.top - R.T, R.W - r.right, r.height, r.width); }; R.realRect = el => gb.call(el); } catch(e){}
+  try { const gb = Element.prototype.getBoundingClientRect; Element.prototype.getBoundingClientRect = function(){ const r = gb.call(this); if (!R.on) return r; return new DOMRect(r.top, R.W - r.right, r.height, r.width); }; R.realRect = el => gb.call(el); } catch(e){}
   try { const ef = Document.prototype.elementFromPoint, efs = Document.prototype.elementsFromPoint;
     Document.prototype.elementFromPoint = function(x, y){ if (!R.on) return ef.call(this, x, y); const p = toR(x, y); return ef.call(this, p[0], p[1]); };
     if (efs) Document.prototype.elementsFromPoint = function(x, y){ if (!R.on) return efs.call(this, x, y); const p = toR(x, y); return efs.call(this, p[0], p[1]); }; } catch(e){}
@@ -59,13 +59,16 @@
   function apply(){
     const w = rW(), h = rH(), on = h > w*1.05;
     if (on){ const s = safe(); R.T = s[0]; R.B = s[1]; } else { R.T = R.B = 0; }
-    R.W = w; R.H = h; R.VW = Math.max(200, h - R.T - R.B); R.VH = w;
+    R.W = w; R.H = h; R.VW = Math.max(200, h); R.VH = w;
     const was = R.on; R.on = on; R.n++;
     de.classList.toggle('rot101', on);
     const st = de.style;
     st.setProperty('--vwx', on ? (R.VW/100) + 'px' : '1vw'); st.setProperty('--vhx', on ? (R.VH/100) + 'px' : '1vh');
     st.setProperty('--rotW', w + 'px'); st.setProperty('--rotT', R.T + 'px'); st.setProperty('--rotVW', R.VW + 'px'); st.setProperty('--rotVH', R.VH + 'px');
-    ['T', 'B', 'L', 'R'].forEach(k => { if (on) st.setProperty('--sa' + k, '0px'); else st.removeProperty('--sa' + k); });
+    /* the scene fills the whole screen; the clock / camera strip (phone's top) and the home bar (phone's bottom) become the game's
+       left and right margins, and both sides get the same margin so the layout stays centred */
+    const side = Math.max(R.T, R.B); R.side = side;
+    if (on){ st.setProperty('--saT', '0px'); st.setProperty('--saB', '0px'); st.setProperty('--saL', side + 'px'); st.setProperty('--saR', side + 'px'); } else ['T', 'B', 'L', 'R'].forEach(k => st.removeProperty('--sa' + k));
     if (on || was) media();
     if (was !== on){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }
   }
@@ -74,7 +77,7 @@
 html.rot101, html.rot101 body{ overflow:hidden !important; }
 html.rot101{ padding:0 !important; }
 html.rot101 body{ position:fixed !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; margin:0 !important;
-  width:var(--rotVW) !important; height:var(--rotVH) !important; transform-origin:0 0 !important; transform:translate(var(--rotW), var(--rotT)) rotate(90deg) !important; }
+  width:var(--rotVW) !important; height:var(--rotVH) !important; transform-origin:0 0 !important; transform:translate(var(--rotW), 0px) rotate(90deg) !important; }
 html.rot101 #rot84{ display:none !important; }`;
   (document.head || de).appendChild(css);
   addEventListener('resize', ev => { if (!ev.isTrusted) return; const w = rW(), h = rH(); if (w !== R.W || h !== R.H) apply(); }, true);
@@ -15498,7 +15501,7 @@ body.ls #gearScreen #worn101, body.ls #gearScreen #wornCap104, body.ls #gearScre
 /* six tabs on one line */
 body.ls #gearScreen .invTop .tabs86{ flex-wrap:nowrap !important; white-space:nowrap !important; gap:2px !important; }
 body.ls #gearScreen .invTop .tabs86 .tab{ display:inline-flex !important; align-items:center !important; justify-content:center; height:34px !important; padding:0 10px !important; font-size:11.5px !important; letter-spacing:.06em !important; flex:0 0 auto !important; }
-@media (max-width:900px){ body.ls #gearScreen .invTop h2{ display:none !important; } body.ls #gearScreen .invTop .tabs86 .tab{ padding:0 8px !important; } }
+@media (max-width:1000px){ body.ls #gearScreen .invTop h2{ display:none !important; } body.ls #gearScreen .invTop .tabs86 .tab{ padding:0 8px !important; } }
 /* the doll: slots | hero | slots, key stats along the bottom */
 body.ls #gearScreen[data-tab="gear"] .doll{ display:grid !important; grid-template-columns:auto minmax(0, 1fr) auto !important; grid-template-rows:minmax(0, 1fr) auto !important;
   grid-template-areas:"l hero r" "s s s" !important; column-gap:6px !important; padding:8px 10px 6px !important; }
