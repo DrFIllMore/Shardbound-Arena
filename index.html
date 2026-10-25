@@ -15560,6 +15560,197 @@ addEventListener('pagehide', save106);
 setInterval(() => { try { if (SV106.loaded && S.mode === 'play' && !P.dead) saveProgress(); } catch(e){} }, 20000);
 window.SV106 = SV106;
 
+/* =================== v107 · STATS, SHARDS AND CODEX REBUILT (owner, 2026-10-24) ===================
+   "They don't look and feel like the hero gear and skill tree. Less scrolling, simple to understand — show the relevant
+    stuff and don't overwhelm the player."
+   · the Equipment action bar (Equip best, Sell, Repair, Done) only shows on the Equipment tab; other tabs get the height back
+   · STATS: one screen. Five groups side by side; each stat shows its total and a thin bar of where it comes from
+            (base · passive tree · gear). Tap a stat → a card with what it does, the three numbers and the items that give it.
+            "Run record" (runs, kills, damage by source, where you spend your time) is the second view.
+   · SHARDS: one card per gem, side by side: what it does, how many of each level you hold, one Combine button per gem.
+   · CODEX: Sets — a short list of every set (found · worn) on the left, the picked set's pieces and bonuses on the right.
+            Gear guide — the item types as compact tiles. */
+const T107 = { view:'hero', set:null };
+function gearOnly107(){ const gs = document.getElementById('gearScreen'); if (gs) gs.classList.toggle('nobar107', invTab !== 'gear'); }
+/* ------------------------------------------------------------------ STATS ------------------------------------------------------------------ */
+function statsHTML107(){ const S0 = statSources(), name = Object.fromEntries(HERO_KEYS);
+  const seg = `<div class="seg107"><button data-v="hero" class="${T107.view === 'hero' ? 'on' : ''}">Hero stats</button><button data-v="runs" class="${T107.view === 'runs' ? 'on' : ''}">Run record</button></div>`;
+  if (T107.view === 'runs') return seg + runs107();
+  const groups = STAT_GROUPS.map(([g, col, keys]) => { const resist = /resist/i.test(g);
+    const rows = keys.filter(k => resist || STAT_ALWAYS.has(k) || Math.abs(S0.total[k] || 0) > 1e-6).map(k => { const t = S0.total[k] || 0, b = S0.base[k] || 0, tr = S0.tree[k] || 0, ge = t - b - tr, sum = Math.abs(b) + Math.abs(tr) + Math.abs(ge) || 1, z = Math.abs(t) < 1e-6;
+      return `<button class="st107${z ? ' z' : ''}" data-k="${k}"><span class="n">${name[k] || k}</span><b>${z ? '—' : g2Fmt(k, t, false)}</b><i class="src"><u style="width:${(Math.abs(b)/sum*100).toFixed(1)}%" class="b"></u><u style="width:${(Math.abs(tr)/sum*100).toFixed(1)}%" class="t"></u><u style="width:${(Math.abs(ge)/sum*100).toFixed(1)}%" class="g"></u></i></button>`; }).join('');
+    return rows ? `<section class="sg107" style="--g:${col}"><h4>${g}</h4>${rows}</section>` : ''; }).join('');
+  return seg + `<div class="sgrid107">${groups}</div><div class="leg107"><span><i class="b"></i>Base</span><span><i class="t"></i>Passive tree</span><span><i class="g"></i>Gear</span><em>Tap a stat to see what it does and where it comes from</em></div>`; }
+function runs107(){ const T = telData(); const fmt = s => s >= 3600 ? Math.floor(s/3600) + 'h ' + Math.floor(s%3600/60) + 'm' : Math.floor(s/60) + 'm ' + Math.floor(s%60) + 's';
+  const tot = Object.values(T.dmg).reduce((a, b) => a + b, 0) || 1, dmg = Object.entries(T.dmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const where = Object.keys(Object.assign({}, T.time, T.deaths)).filter(w => w && !/undefined/.test(w)).sort((a, b) => (T.time[b] || 0) - (T.time[a] || 0)).slice(0, 6);
+  const big = [['Runs', T.runs], ['Kills', T.kills], ['Potions', T.potions], ['Ultimates', T.ults]].map(([k, v]) => `<div><b>${(v || 0).toLocaleString()}</b><small>${k}</small></div>`).join('');
+  return `<div class="rgrid107"><section class="sg107" style="--g:#9FE8FF"><h4>All runs</h4><div class="big107">${big}</div></section>
+    <section class="sg107" style="--g:#FF7A5A"><h4>Damage by source</h4>${dmg.map(([k, v]) => { const p = Math.round(v/tot*100); return `<div class="bar107"><span>${k}</span><i><u style="width:${p}%"></u></i><b>${p}%</b></div>`; }).join('') || '<p class="none107">No runs yet</p>'}</section>
+    <section class="sg107" style="--g:#FFE27A"><h4>Where your time goes</h4>${where.map(w => `<div class="row107"><span>${w.replace(/^[IV]+ · /, '')}</span><b>${fmt(T.time[w] || 0)}</b>${T.deaths[w] ? `<em>${T.deaths[w]} ✕</em>` : '<em class="ok">0 ✕</em>'}</div>`).join('') || '<p class="none107">No runs yet</p>'}</section></div>`; }
+function statCard107(k){ const S0 = statSources(), name = Object.fromEntries(HERO_KEYS), t = S0.total[k] || 0, b = S0.base[k] || 0, tr = S0.tree[k] || 0, ge = t - b - tr;
+  const items = S0.gear.filter(x => Math.abs(x.d[k] || 0) > 1e-6).sort((a, c) => Math.abs(c.d[k]) - Math.abs(a.d[k])).slice(0, 5), rest = ge - items.reduce((a, x) => a + x.d[k], 0);
+  let bg = document.getElementById('stBg107'); if (!bg){ bg = document.createElement('div'); bg.id = 'stBg107'; document.getElementById('gearScreen').appendChild(bg); bg.addEventListener('click', e => { if (e.target === bg || e.target.closest('.x107')) bg.hidden = true; }); }
+  const num = (v, cls, lab) => `<div class="${cls}"><small>${lab}</small><b>${Math.abs(v) < 1e-6 ? '—' : g2Fmt(k, v, true)}</b></div>`;
+  bg.innerHTML = `<div class="card107"><button class="x107" aria-label="Close">✕</button><h3>${name[k] || k}<b>${Math.abs(t) < 1e-6 ? '—' : g2Fmt(k, t, false)}</b></h3><p>${STAT_HELP[k] || ''}</p>
+    <div class="three107">${num(b, 'b', 'Base')}${num(tr, 't', 'Passive tree')}${num(ge, 'g', 'Gear')}</div>
+    ${items.length || Math.abs(rest) > 1e-3 ? `<h5>From your gear</h5>${items.map(x => `<div class="it107"><span style="color:${x.css}">${x.name}</span><b>${g2Fmt(k, x.d[k], true)}</b></div>`).join('')}${Math.abs(rest) > 1e-3 ? `<div class="it107"><span>Set bonuses & shards</span><b>${g2Fmt(k, rest, true)}</b></div>` : ''}` : ''}</div>`;
+  bg.hidden = false; }
+g2StatsHTML = function(){ try { return statsHTML107(); } catch(e){ console.error(e); return ''; } };
+document.addEventListener('click', ev => { const p = ev.target.closest && ev.target.closest('#statsPane'); if (!p) return;
+  const v = ev.target.closest('.seg107 [data-v]'); if (v){ T107.view = v.dataset.v; try { AU.fx.click(); } catch(e){} p.innerHTML = statsHTML107(); return; }
+  const s = ev.target.closest('.st107'); if (s){ try { AU.fx.click(); } catch(e){} statCard107(s.dataset.k); } });
+/* ------------------------------------------------------------------ SHARDS ------------------------------------------------------------------ */
+shardsHTML99 = function(){ const any = Object.keys(ANC).some(t => [1, 2, 3, 4].some(l => gemN99(t, l) >= 2));
+  const cards = Object.entries(ANC).map(([t, A]) => { const ns = [1, 2, 3, 4, 5].map(l => gemN99(t, l)), have = ns.reduce((a, b) => a + b, 0), best = ns.reduce((m, n, i) => n ? i + 1 : m, 0), pair = [1, 2, 3, 4].some(l => gemN99(t, l) >= 2);
+    return `<section class="gem107${have ? '' : ' none'}" style="--c:${A.css}"><div class="gh107"><span class="gi107"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l7 7-7 13L5 9z"/></svg></span><div><b>${A.name}</b><small>${best ? 'Best: ' + ANC_ROMAN[best - 1] + ' · ' + gemFx99(t, best) : 'None yet'}</small></div></div>
+      <div class="lad107">${ns.map((n, i) => `<button class="g99Cell lv107${n ? ' has' : ''}${n >= 2 && i < 4 ? ' pair' : ''}" data-t="${t}" data-l="${i + 1}"><b>${ANC_ROMAN[i]}</b><em>${n ? '×' + n : '·'}</em></button>`).join('')}</div>
+      <div class="rng107">${gemFx99(t, 1)} <i>→</i> ${gemFx99(t, 5)}</div>
+      <button class="cmb107" data-ct="${t}" ${pair ? '' : 'disabled'}>${pair ? 'Combine pairs' : 'No pairs to combine'}</button></section>`; }).join('');
+  return `<div class="g99Top top107"><span>Socket gems from an item's details in your bag · <b>two</b> of a level make <b>one</b> of the next</span><button class="g99All" data-all="1" ${any ? '' : 'disabled'}>Combine all</button></div><div class="ggrid107">${cards}</div>`; };
+document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('#shardsPane .cmb107'); if (!b || b.disabled) return; combineAll99(b.dataset.ct); renderInv(); });
+/* ------------------------------------------------------------------ CODEX ------------------------------------------------------------------ */
+renderCodex = function(){ const pane = document.getElementById('codexPane'); if (!pane) return;
+  const owned = [...P.inv, ...EQ_SLOTS.map(s => P.eq[s]).filter(Boolean)];
+  const seg = `<div class="seg107"><button data-ct="sets" class="${codexTab === 'sets' ? 'on' : ''}">Sets</button><button data-ct="types" class="${codexTab !== 'sets' ? 'on' : ''}">Gear guide</button></div>`;
+  let h = seg;
+  if (codexTab === 'sets'){
+    const info = Object.entries(SETS).map(([sid, S2]) => { const parts = Object.entries(S2.parts), worn = setCountOf(sid);
+      const has = slot => owned.some(it => it.set === sid && (it.slot === slot || (slot.startsWith('acc') && it.slot === 'acc')));
+      return { sid, S2, parts, worn, has, got:parts.filter(([slot]) => has(slot)).length }; });
+    if (!T107.set || !SETS[T107.set]){ const pick = info.slice().sort((a, b) => b.worn - a.worn || b.got - a.got)[0]; T107.set = pick ? pick.sid : null; }
+    const list = info.map(x => `<button class="cl107${x.sid === T107.set ? ' on' : ''}" data-set="${x.sid}" style="--c:${x.S2.css}"><span class="nm">${x.S2.name}</span><span class="pr"><i style="width:${Math.round(x.got/x.parts.length*100)}%"></i></span><em>${x.got}/${x.parts.length}${x.worn ? ' · <b>' + x.worn + ' worn</b>' : ''}</em></button>`).join('');
+    const X = info.find(x => x.sid === T107.set); let det = '';
+    if (X){ const next = X.S2.bonus.find(b => X.worn < b.n), cats = [...new Set(X.S2.bonus.flatMap(b => Object.keys(b.s || {})).concat(Object.keys(X.S2.aff || {})).map(k => SF[k] ? SF[k][1] : 'Utility'))];
+      det = `<div class="cd107" style="--c:${X.S2.css}"><div class="ch107"><b>${X.S2.name}</b><span>${cats.join(' · ')}</span><em>${X.got} of ${X.parts.length} found · ${X.worn} worn</em></div>
+        <div class="cp107">${X.parts.map(([slot, type]) => { const it = sampleItem(type, 3, X.sid), g = X.has(slot); return `<div class="pc107${g ? ' got' : ''}"><img src="${iconFor(it)}" alt=""><span>${X.S2.pieceNames[slot] || TYPES[type].label}</span></div>`; }).join('')}</div>
+        <div class="cb107">${X.S2.bonus.map(b => `<div class="${X.worn >= b.n ? 'on' : ''}"><i>${b.n}</i><span>${b.t}</span>${X.worn >= b.n ? '<em>Active</em>' : ''}</div>`).join('')}</div>
+        <div class="cn107${next ? '' : ' done'}">${next ? (X.worn ? 'Wear ' + (next.n - X.worn) + ' more for the next bonus' : 'Set pieces drop from orbs, elites and champions') : 'Full set bonus active'}</div></div>`; }
+    h += `<div class="cx107"><div class="cls107">${list}</div>${det}</div>`;
+  } else {
+    const groups = [['Main hand', ['sword','axe','mace','lance','spear','greatsword','halberd','staff','bow','crossbow','rod']], ['Off-hand', ['shield','kite','orb','dagger']], ['Ammo', ['arrows']], ['Armour', ['helm','crown','hood','cape','plate','fullplate','robe','gauntlets','bracers','greaves','boots','leather']], ['Jewellery', ['amulet','ring']]];
+    h += '<div class="gg107">' + groups.map(([g, types]) => `<h4>${g}</h4>` + types.filter(t => TYPES[t]).map(t => { const T = TYPES[t], it = sampleItem(t, 2), keys = Object.keys(it.base), n = owned.filter(x => x.type === t).length;
+      const rule = T.ammo ? 'Needs a bow' : T.hand === 2 ? 'Two-handed' : T.ranged ? (['bow','xbow'].includes(T.ranged) ? 'Needs arrows' : 'Ranged') : T.hand === 1 ? 'One-handed' : '';
+      return `<div class="gt107"><img src="${iconFor(it)}" alt=""><div><b>${T.label}${n ? `<em>${n}</em>` : ''}</b><span>${keys.map(k => sfLabel(k)).join(' · ')}</span>${rule ? `<small>${rule}</small>` : ''}</div></div>`; }).join('')).join('') + '</div>';
+  }
+  pane.innerHTML = h;
+  pane.querySelectorAll('[data-ct]').forEach(b => b.onclick = () => { codexTab = b.dataset.ct; try { AU.fx.click(); } catch(e){} renderCodex(); });
+  pane.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { T107.set = b.dataset.set; try { AU.fx.click(); } catch(e){} renderCodex(); }); };
+/* item pictures are drawn in the background: the selected set's few pieces are drawn now; the rest refresh as they finish */
+{ const _rc107 = renderCodex; let tries = 0; renderCodex = function(){ let was; try { if (codexTab === 'sets' && typeof IQ88 !== 'undefined'){ was = IQ88.lazy; IQ88.lazy = false; } } catch(e){}
+    try { _rc107.apply(this, arguments); } finally { try { if (was !== undefined) IQ88.lazy = was; } catch(e){} }
+    try { const pane = document.getElementById('codexPane'), ph = pane && Array.from(pane.querySelectorAll('img')).some(i => i.src === PH88);
+      if (ph && tries < 25 && invTab === 'codex'){ tries++; setTimeout(() => { if (invTab === 'codex' && !document.getElementById('gearScreen').hidden){ const sc = pane.querySelector('.gg107, .cls107'), y = sc ? sc.scrollTop : 0; renderCodex(); const sc2 = pane.querySelector('.gg107, .cls107'); if (sc2) sc2.scrollTop = y; } }, 700); } else if (!ph) tries = 0; } catch(e){} }; }
+{ const _ri107 = renderInv; renderInv = function(){ const r = _ri107.apply(this, arguments); try { gearOnly107(); } catch(e){} return r; }; }
+window.T107 = T107;
+{ const css = document.createElement('style'); css.id = 'v107css'; css.textContent = `
+/* ---------- the Equipment bar belongs to the Equipment tab ---------- */
+body.ls #gearScreen.nobar107 #g2Bar{ display:none !important; }
+body.ls #gearScreen.nobar107 .invBody{ height:calc(100% - 58px) !important; max-height:none !important; }
+body.ls #gearScreen.nobar107 .invWrap{ height:100% !important; }
+/* shared bits */
+.seg107{ display:inline-flex; gap:0; border:1px solid rgba(216,180,90,.4); border-radius:9px; overflow:hidden; margin:0 0 8px; background:rgba(6,11,19,.7); flex:0 0 auto; }
+.seg107 button{ height:30px; padding:0 16px; border:0; background:transparent; color:#a6b8c8; font:600 11.5px/1 'Chakra Petch', sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+.seg107 button + button{ border-left:1px solid rgba(216,180,90,.3); }
+.seg107 button.on{ color:#04121b; background:linear-gradient(180deg, #9cecff, #2fbdf0); }
+.sg107{ background:linear-gradient(180deg, rgba(16,30,42,.75), rgba(6,12,20,.85)); border:1px solid rgba(216,180,90,.26); border-radius:9px; padding:7px 9px 6px; min-width:0; position:relative; }
+.sg107::before{ content:''; position:absolute; left:9px; right:9px; top:0; height:2px; border-radius:2px; background:var(--g); opacity:.8; }
+.sg107 h4{ margin:2px 0 5px; font:900 11px/1 'Cinzel', Georgia, serif; letter-spacing:.14em; text-transform:uppercase; color:var(--g); }
+/* ---------- STATS ---------- */
+body.ls #statsPane:not([hidden]){ display:flex !important; flex-direction:column !important; overflow-y:auto !important; }
+.sgrid107{ display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)); gap:7px; align-items:start; }
+.st107{ display:grid; grid-template-columns:1fr auto; align-items:baseline; column-gap:6px; width:100%; padding:4px 0 5px; border:0; border-bottom:1px solid rgba(216,180,90,.1); background:transparent; text-align:left; cursor:pointer; }
+.st107:last-of-type{ border-bottom:0; }
+.st107 .n{ font:600 11px/1.15 'Chakra Petch', sans-serif; color:#b9c7d4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.st107 b{ font:600 18px/1 'Teko', sans-serif; color:#f4fbff; font-variant-numeric:tabular-nums; }
+.st107.z .n{ color:#6c7c8c; } .st107.z b{ color:#5d6b79; }
+.st107 .src{ grid-column:1 / -1; display:flex; height:3px; margin-top:3px; border-radius:2px; overflow:hidden; background:rgba(255,255,255,.05); }
+.st107 .src u{ display:block; height:100%; } .src .b, .leg107 i.b{ background:#8d9bb0; } .src .t, .leg107 i.t{ background:#ffd66b; } .src .g, .leg107 i.g{ background:#5fb8ff; }
+.st107:active{ background:rgba(79,216,255,.1); }
+.leg107{ display:flex; align-items:center; gap:14px; margin-top:8px; font:600 10.5px 'Chakra Petch', sans-serif; color:#9fb0c0; flex-wrap:wrap; }
+.leg107 span{ display:inline-flex; align-items:center; gap:5px; } .leg107 i{ width:14px; height:4px; border-radius:2px; display:inline-block; }
+.leg107 em{ font-style:normal; color:#7d8ea0; margin-left:auto; }
+#stBg107{ position:absolute; inset:0; z-index:60; background:rgba(2,5,10,.55); display:grid; place-items:center; }
+#stBg107[hidden]{ display:none; }
+.card107{ position:relative; width:min(400px, 86%); max-height:88%; overflow-y:auto; padding:14px 16px 12px; border-radius:12px; background:linear-gradient(180deg, rgba(18,32,46,.98), rgba(7,13,22,.98)); border:1px solid rgba(216,180,90,.45); box-shadow:0 16px 40px rgba(0,0,0,.7); }
+.card107 h3{ margin:0 36px 4px 0; display:flex; align-items:baseline; gap:10px; font:900 17px/1.1 'Cinzel', Georgia, serif; color:#f3dc9a; }
+.card107 h3 b{ font:600 26px/1 'Teko', sans-serif; color:#fff; margin-left:auto; }
+.card107 p{ margin:0 0 10px; font:500 12px/1.4 'Chakra Petch', sans-serif; color:#b9c7d4; }
+.x107{ position:absolute; right:10px; top:10px; width:30px; height:30px; border-radius:8px; border:1px solid rgba(216,180,90,.4); background:rgba(6,12,20,.8); color:#e6eef6; font-size:14px; }
+.three107{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-bottom:8px; }
+.three107 > div{ border-radius:8px; padding:6px 8px; background:rgba(255,255,255,.04); border-top:2px solid; }
+.three107 .b{ border-color:#8d9bb0; } .three107 .t{ border-color:#ffd66b; } .three107 .g{ border-color:#5fb8ff; }
+.three107 small{ display:block; font:600 9.5px 'Chakra Petch', sans-serif; letter-spacing:.08em; text-transform:uppercase; color:#8fa3b5; }
+.three107 b{ font:600 20px/1.1 'Teko', sans-serif; color:#f4fbff; }
+.card107 h5{ margin:4px 0 4px; font:900 10px 'Cinzel', serif; letter-spacing:.14em; text-transform:uppercase; color:#c8ad74; }
+.it107{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,.05); font:600 11.5px 'Chakra Petch', sans-serif; color:#b9c7d4; }
+.it107 b{ color:#5fb8ff; font-weight:600; }
+/* run record */
+.rgrid107{ display:grid; grid-template-columns:1fr 1.25fr 1.25fr; gap:7px; align-items:start; }
+.big107{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.big107 > div{ text-align:center; padding:6px 0; border-radius:8px; background:rgba(255,255,255,.03); }
+.big107 b{ display:block; font:600 26px/1 'Teko', sans-serif; color:#fff; } .big107 small{ font:600 9.5px 'Chakra Petch', sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8fa3b5; }
+.bar107{ display:grid; grid-template-columns:minmax(0, 1fr) 70px 34px; align-items:center; gap:6px; padding:3px 0; font:600 11px 'Chakra Petch', sans-serif; color:#b9c7d4; }
+.bar107 span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .bar107 i{ height:5px; border-radius:3px; background:rgba(255,255,255,.06); overflow:hidden; } .bar107 u{ display:block; height:100%; background:linear-gradient(90deg, #ff9a6b, #ffd66b); }
+.bar107 b{ font:600 15px/1 'Teko', sans-serif; color:#fff; text-align:right; }
+.row107{ display:grid; grid-template-columns:minmax(0, 1fr) auto auto; gap:8px; align-items:baseline; padding:3px 0; border-bottom:1px solid rgba(255,255,255,.05); font:600 11px 'Chakra Petch', sans-serif; color:#b9c7d4; }
+.row107 span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .row107 b{ font:600 15px/1 'Teko', sans-serif; color:#fff; } .row107 em{ font-style:normal; color:#ff8a7a; min-width:26px; text-align:right; } .row107 em.ok{ color:#5d6b79; }
+.none107{ margin:6px 0; font:500 11px 'Chakra Petch', sans-serif; color:#7d8ea0; }
+/* ---------- SHARDS ---------- */
+body.ls #shardsPane.g99:not([hidden]){ display:flex !important; flex-direction:column !important; overflow-y:auto !important; }
+.top107{ display:flex !important; align-items:center !important; gap:12px !important; margin:0 0 8px !important; padding:0 !important; border:0 !important; }
+.top107 > span{ font:500 11.5px/1.35 'Chakra Petch', sans-serif !important; color:#9fb0c0 !important; } .top107 > span b{ color:#f3dc9a; font-weight:700; }
+.top107 .g99All{ margin-left:auto !important; height:32px !important; padding:0 16px !important; border-radius:9px !important; font:600 12px 'Chakra Petch', sans-serif !important; letter-spacing:.06em; text-transform:uppercase; color:#04121b !important; background:linear-gradient(180deg, #9cecff, #2fbdf0) !important; border:0 !important; flex:0 0 auto; }
+.top107 .g99All:disabled{ background:rgba(255,255,255,.06) !important; color:#6c7c8c !important; }
+.ggrid107{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:7px; }
+.gem107{ display:flex; flex-direction:column; gap:7px; padding:9px 8px 8px; border-radius:10px; min-width:0; background:radial-gradient(ellipse 90% 60% at 50% 0%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%), linear-gradient(180deg, rgba(16,30,42,.8), rgba(6,12,20,.9)); border:1px solid color-mix(in srgb, var(--c) 45%, rgba(216,180,90,.2)); }
+.gem107.none{ filter:saturate(.45); opacity:.8; }
+.gh107{ display:flex; align-items:center; gap:7px; min-width:0; }
+.gi107{ flex:0 0 auto; width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:color-mix(in srgb, var(--c) 20%, rgba(0,0,0,.5)); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent), 0 0 12px color-mix(in srgb, var(--c) 40%, transparent); }
+.gi107 svg{ width:17px; height:17px; fill:var(--c); filter:drop-shadow(0 0 4px var(--c)); }
+.gh107 b{ display:block; font:900 11.5px/1.15 'Cinzel', Georgia, serif; color:#f4fbff; }
+.gh107 small{ display:block; font:600 10px/1.25 'Chakra Petch', sans-serif; color:#9fb0c0; margin-top:2px; }
+.lad107{ display:grid; grid-template-columns:repeat(5, 1fr); gap:3px; }
+.lv107{ height:40px; display:flex !important; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-radius:7px; border:1px solid rgba(255,255,255,.08) !important; background:rgba(0,0,0,.3) !important; padding:0 !important; min-width:0 !important; position:relative; }
+.lv107 b{ font:600 13px/1 'Teko', sans-serif !important; color:#6c7c8c !important; } .lv107 em{ font:600 10.5px/1 'Chakra Petch', sans-serif !important; font-style:normal !important; color:#5d6b79 !important; }
+.lv107.has{ border-color:color-mix(in srgb, var(--c) 70%, transparent) !important; background:color-mix(in srgb, var(--c) 16%, rgba(0,0,0,.35)) !important; }
+.lv107.has b{ color:var(--c) !important; } .lv107.has em{ color:#fff !important; }
+.lv107.pair::after{ content:'+'; position:absolute; top:-5px; right:-4px; width:13px; height:13px; border-radius:50%; background:#ffd66b; color:#04121b; font:800 11px/13px Inter, sans-serif; text-align:center; }
+.rng107{ font:600 10px/1.3 'Chakra Petch', sans-serif; color:#8fa3b5; text-align:center; } .rng107 i{ color:var(--c); font-style:normal; }
+.cmb107{ height:30px; border-radius:8px; border:1px solid color-mix(in srgb, var(--c) 60%, transparent); background:color-mix(in srgb, var(--c) 18%, rgba(0,0,0,.4)); color:#fff; font:600 11px 'Chakra Petch', sans-serif; letter-spacing:.05em; text-transform:uppercase; }
+.cmb107:disabled{ border-color:rgba(255,255,255,.08); background:rgba(255,255,255,.03); color:#5d6b79; text-transform:none; letter-spacing:0; }
+/* ---------- CODEX ---------- */
+body.ls #codexPane:not([hidden]){ display:flex !important; flex-direction:column !important; overflow:hidden !important; }
+.cx107{ display:grid; grid-template-columns:minmax(200px, 34%) minmax(0, 1fr); gap:8px; flex:1 1 auto; min-height:0; }
+.cls107{ overflow-y:auto; display:flex; flex-direction:column; gap:3px; padding-right:2px; }
+.cl107{ display:grid; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:8px; row-gap:3px; align-items:center; padding:6px 9px; border-radius:8px; text-align:left;
+  border:1px solid rgba(255,255,255,.06); border-left:3px solid var(--c); background:rgba(10,18,28,.75); }
+.cl107 .nm{ font:700 11.5px/1.15 'Chakra Petch', sans-serif; color:#e6eef6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cl107 em{ font:600 10px 'Chakra Petch', sans-serif; font-style:normal; color:#8fa3b5; white-space:nowrap; } .cl107 em b{ color:#ffd66b; font-weight:600; }
+.cl107 .pr{ grid-column:1 / -1; height:3px; border-radius:2px; background:rgba(255,255,255,.06); overflow:hidden; } .cl107 .pr i{ display:block; height:100%; background:var(--c); }
+.cl107.on{ background:linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, rgba(10,18,28,.9)), rgba(10,18,28,.85)); border-color:color-mix(in srgb, var(--c) 55%, transparent); }
+.cd107{ overflow-y:auto; padding:10px 12px; border-radius:10px; background:radial-gradient(ellipse 80% 50% at 0% 0%, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%), linear-gradient(180deg, rgba(16,30,42,.8), rgba(6,12,20,.9)); border:1px solid color-mix(in srgb, var(--c) 40%, rgba(216,180,90,.2)); }
+.ch107{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.ch107 b{ font:900 16px/1.1 'Cinzel', Georgia, serif; color:var(--c); text-shadow:0 0 12px color-mix(in srgb, var(--c) 40%, transparent); }
+.ch107 span{ font:700 9.5px 'Chakra Petch', sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#8fa3b5; } .ch107 em{ margin-left:auto; font:600 11px 'Chakra Petch', sans-serif; font-style:normal; color:#c9d6e2; }
+.cp107{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.pc107{ width:62px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.pc107 img{ width:46px; height:46px; border-radius:8px; background:rgba(0,0,0,.4); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); filter:grayscale(1) brightness(.45); }
+.pc107.got img{ filter:none; box-shadow:inset 0 0 0 1.5px var(--c), 0 0 10px color-mix(in srgb, var(--c) 35%, transparent); }
+.pc107 span{ font:600 9px/1.15 'Chakra Petch', sans-serif; color:#7d8ea0; text-align:center; } .pc107.got span{ color:#dfe8f2; }
+.cb107 > div{ display:flex; align-items:center; gap:8px; padding:4px 0; border-top:1px solid rgba(255,255,255,.05); font:500 11.5px/1.3 'Chakra Petch', sans-serif; color:#8fa3b5; }
+.cb107 i{ flex:0 0 auto; width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font:700 11px Inter, sans-serif; font-style:normal; border:1px solid rgba(255,255,255,.2); color:#8fa3b5; }
+.cb107 > div.on{ color:#f4fbff; } .cb107 > div.on i{ background:var(--c); border-color:var(--c); color:#04121b; }
+.cb107 em{ margin-left:auto; font:700 9.5px 'Chakra Petch', sans-serif; font-style:normal; letter-spacing:.1em; text-transform:uppercase; color:#7dffc4; }
+.cn107{ margin-top:6px; font:600 11px 'Chakra Petch', sans-serif; color:#ffd66b; } .cn107.done{ color:#7dffc4; }
+.gg107{ overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:5px; align-content:start; flex:1 1 auto; min-height:0; }
+.gg107 h4{ grid-column:1 / -1; margin:6px 0 1px; font:900 10.5px 'Cinzel', serif; letter-spacing:.16em; text-transform:uppercase; color:#c8ad74; }
+.gt107{ display:flex; gap:7px; align-items:center; padding:5px 7px; border-radius:8px; background:rgba(10,18,28,.75); border:1px solid rgba(255,255,255,.06); min-width:0; }
+.gt107 img{ width:34px; height:34px; flex:0 0 auto; border-radius:6px; background:rgba(0,0,0,.35); }
+.gt107 div{ min-width:0; } .gt107 b{ display:flex; gap:6px; align-items:center; font:700 11.5px 'Chakra Petch', sans-serif; color:#e6eef6; } .gt107 b em{ font-style:normal; font-size:9.5px; color:#04121b; background:#7dffc4; border-radius:6px; padding:0 5px; }
+.gt107 span{ display:block; font:500 10px/1.25 'Chakra Petch', sans-serif; color:#8fa3b5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .gt107 small{ display:block; font:600 9.5px 'Chakra Petch', sans-serif; color:#d59a5a; }
+`; document.head.appendChild(css); }
+
 })();
 
 /* ================= ULTIMATES: each role's special move is the capstone of its own tree ================= */
